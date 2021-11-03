@@ -1,0 +1,31 @@
+pl:
+  checkpoint:
+    callback:
+      save_top_k: -1
+      monitor: "g/train_L1"
+      verbose: True
+      every_n_epochs: 5 #epochs
+
+  trainer:
+    gradient_clip_val: 0 # don't clip (default value)
+    max_epochs: 10000
+    num_sanity_val_steps: 1
+    fast_dev_run: False
+    check_val_every_n_epoch: 1
+    progress_bar_refresh_rate: 1
+    accelerator: "ddp"
+    benchmark: True
+
+logging:
+  log_dir: /DATA1/dhchoi/log/nansy/
+  seed: 01
+
+  save_files: [
+      './*.py',
+      './*.sh',
+      'configs/*.*',
+      'datasets/*.*',
+      'models/*.*',
+      'utils/*.*',
+  ]
+
