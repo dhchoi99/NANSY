@@ -222,19 +222,23 @@ def apply_iir_filter(wav: torch.Tensor, ftype, dBgain, cutoff_freq, sample_rate,
 peq = parametric_equalizer
 
 
-def f(wav, sr):
-    wav_tensor = wav_to_Tensor(wav)
-    wav_tensor = peq(wav_tensor, sr)
-    wav_numpy = wav_tensor.numpy()
+def f(wav: torch.Tensor, sr: int) -> torch.Tensor:
+    """
+
+    :param wav: torch.Tensor of shape (N,)
+    :param sr: sampling rate
+    :return: torch.Tensor of shape (M, )
+    """
+    wav = peq(wav, sr)
+    wav_numpy = wav.numpy()
     sound = wav_to_Sound(wav_numpy)
     sound = formant_and_pitch_shift(sound)
-    return sound
+    return torch.from_numpy(sound.values)
 
 
-def g(wav, sr):
-    wav_tensor = wav_to_Tensor(wav)
-    wav_tensor = peq(wav_tensor, sr)
-    wav_numpy = wav_tensor.numpy()
+def g(wav: torch.Tensor, sr: int) -> torch.Tensor:
+    wav = peq(wav, sr)
+    wav_numpy = wav.numpy()
     sound = wav_to_Sound(wav_numpy)
     sound = formant_shift(sound)
-    return sound
+    return torch.from_numpy(sound.values)
