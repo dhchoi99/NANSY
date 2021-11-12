@@ -1,7 +1,9 @@
+import numpy as np
 import torch
 import transformers
 
 from models.ecapa import ECAPA_TDNN
+from models.yin import differenceFunction, cumulativeMeanNormalizedDifferenceFunction
 
 
 class Linguistic(torch.nn.Module):
@@ -57,6 +59,27 @@ class Pitch(torch.nn.Module):
     def __init__(self, conf=None):
         super(Pitch, self).__init__()
         self.conf = conf
+
+    @staticmethod
+    def midi_to_hz(m, sr):
+        return sr / 440 / np.power(2, (m - 69) / 12)
+
+    @staticmethod
+    def yingram_from_cmndf(cmndf, m, sr=22050):
+        c_m = Pitch.midi_to_hz(m, sr)
+        c_m_ceil = int(np.ceil(c_m))
+        c_m_floor = int(np.floor(c_m))
+
+        y = (cmndf[c_m_ceil] - cmndf[c_m_floor]) / (c_m_ceil - c_m_floor) * (c_m - c_m_floor) + cmndf[c_m_floor]
+        return y
+
+    @staticmethod
+    def compute_yingram(x, m, tau_max=2048, sr=22050):
+        df = differenceFunction(x, x.shape[-1], tau_max)
+        cmndf = cumulativeMeanNormalizedDifferenceFunction(df, tau_max)
+
+        y = Pitch.yingram_from_cmndf(cmndf, m, sr=sr)
+        return y
 
     def forward(self, x):
         raise NotImplementedError
