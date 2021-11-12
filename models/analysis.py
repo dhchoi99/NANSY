@@ -1,3 +1,5 @@
+import math
+
 import numpy as np
 import torch
 import transformers
@@ -16,6 +18,7 @@ class Linguistic(torch.nn.Module):
             param.requires_grad = False
 
     def forward(self, x):
+        # x.shape: B x t
         outputs = self.wav2vec2(x, output_hidden_states=True)
         y = outputs.hidden_states[1]
         y = y.permute((0, 2, 1))  # B x t x C -> B x C x t
@@ -36,6 +39,7 @@ class Speaker(torch.nn.Module):
         self.spk = ECAPA_TDNN(c_in=1024, c_mid=512, c_out=192)
 
     def forward(self, x):
+        # x.shape: B x t
         outputs = self.wav2vec2(x, output_hidden_states=True)
         y = outputs.hidden_states[12]
         y = y.permute((0, 2, 1))  # B x t x C -> B x C x t
@@ -62,7 +66,7 @@ class Pitch(torch.nn.Module):
 
     @staticmethod
     def midi_to_hz(m, sr):
-        return sr / 440 / np.power(2, (m - 69) / 12)
+        return sr / 440. / math.pow(2, (m - 69) / 12.)
 
     @staticmethod
     def yingram_from_cmndf(cmndf, m, sr=22050):
@@ -74,12 +78,13 @@ class Pitch(torch.nn.Module):
         return y
 
     @staticmethod
-    def compute_yingram(x, m, tau_max=2048, sr=22050):
+    def compute_yin(x, m, tau_max=2048, sr=22050):
         df = differenceFunction(x, x.shape[-1], tau_max)
         cmndf = cumulativeMeanNormalizedDifferenceFunction(df, tau_max)
 
         y = Pitch.yingram_from_cmndf(cmndf, m, sr=sr)
         return y
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor):
+        # x.shape: B x t
         raise NotImplementedError

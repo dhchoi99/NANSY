@@ -39,7 +39,7 @@ class Res2_Conv1D(nn.Module):
         param x: (B x c x d)
         """
 
-        xs = torch.split(x, self.width, dim=1) # channel-wise split
+        xs = torch.split(x, self.width, dim=1)  # channel-wise split
         ys = []
 
         for i in range(self.scale):
@@ -54,7 +54,7 @@ class Res2_Conv1D(nn.Module):
                 y_ = self.bns[i - 1](self.convs[i - 1](x_))
             ys.append(y_)
 
-        y = torch.cat(ys, dim=1) # channel-wise concat
+        y = torch.cat(ys, dim=1)  # channel-wise concat
         return y
 
 
@@ -117,11 +117,13 @@ class AttentiveStatisticPool(nn.Module):
         )
 
     def forward(self, x):
+        # x.shape: B x C x t
         alpha = self.network(x)
         mu_hat = torch.sum(alpha * x, dim=-1)
         var = torch.sum(alpha * x ** 2, dim=-1) - mu_hat ** 2
         std_hat = torch.sqrt(var.clamp(min=1e-9))
         y = torch.cat([mu_hat, std_hat], dim=-1)
+        # y.shape: B x (c_in*2)
         return y
 
 
@@ -135,15 +137,17 @@ class ECAPA_TDNN(nn.Module):
         self.layer4 = SE_Res2_Block(c_mid, 8, 3, 1, 4, 4)
 
         self.network = nn.Sequential(
-            nn.Conv1d(c_mid * 3, 1536, kernel_size=1),
+            # Figure 2 in https://arxiv.org/pdf/2005.07143.pdf seems like groupconv?
+            nn.Conv1d(c_mid * 3, 1536, kernel_size=1, groups=3),
             AttentiveStatisticPool(1536, 128),
-            nn.BatchNorm1d(3072),
-            nn.Linear(3072, c_out),
-            nn.BatchNorm1d(c_out)
         )
 
+        self.bn1 = nn.BatchNorm1d(3072)
+        self.linear = nn.Linear(3072, c_out)
+        self.bn2 = nn.BatchNorm1d(c_out)
+
     def forward(self, x):
-        x = x.transpose(1, 2)
+        # x.shape: B x C x t
         y1 = self.layer1(x)
         y2 = self.layer2(y1) + y1
         y3 = self.layer3(y1 + y2) + y1 + y2
@@ -151,12 +155,16 @@ class ECAPA_TDNN(nn.Module):
 
         y = torch.cat([y2, y3, y4], dim=1)  # channel-wise concat
         y = self.network(y)
+
+        y = self.linear(self.bn1(y.unsqueeze(-1)).squeeze(-1))
+        y = self.bn2(y.unsqueeze(-1)).squeeze(-1)
+
         return y
 
 
 if __name__ == '__main__':
     # Input size: batch_size * seq_len * feat_dim
-    x = torch.zeros(2, 200, 80)
+    x = torch.zeros(2, 80, 200)
     model = ECAPA_TDNN(80, 512, 192)
     out = model(x)
     print(model)
