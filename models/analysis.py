@@ -55,7 +55,7 @@ class Energy(torch.nn.Module):
     def forward(self, mel):
         # mel: B x t x C
         # For the energy feature, we simply took an average from a log-mel spectrogram along the frequency axis.
-        y = torch.mean(mel, dim=-1)
+        y = torch.mean(mel, dim=-1, keepdim=True)
         return y
 
 
@@ -88,3 +88,27 @@ class Pitch(torch.nn.Module):
     def forward(self, x: torch.Tensor):
         # x.shape: B x t
         raise NotImplementedError
+
+
+if __name__ == '__main__':
+    import torch
+
+    wav = torch.randn(2, 20000)
+    mel = torch.randn(2, 150, 80)
+
+    linguistic = Linguistic()
+    speaker = Speaker()
+    energy = Energy()
+    pitch = Pitch()
+
+    lps = linguistic(wav)
+    print(lps.shape)
+
+    s = speaker(wav)
+    print(s.shape)
+
+    e = energy(mel)
+    print(e.shape)
+
+    ps = pitch(wav)
+    print(ps.shape)
