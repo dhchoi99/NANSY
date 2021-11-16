@@ -139,10 +139,10 @@ class ResBlock(nn.Module):
     def __init__(self, c_in, c_mid=128, c_out=128):
         super(ResBlock, self).__init__()
         self.leaky_relu1 = nn.LeakyReLU()
-        self.conv1 = nn.Conv1d(c_in, c_mid, kernel_size=3, stride=1, padding=1, dilation=3)
+        self.conv1 = nn.Conv1d(c_in, c_mid, kernel_size=3, stride=1, padding=(3 - 1) // 2 * 3, dilation=3)
 
         self.leaky_relu2 = nn.LeakyReLU()
-        self.conv2 = nn.Conv1d(c_mid, c_out, kernel_size=3, stride=1, padding=1, dilation=3)
+        self.conv2 = nn.Conv1d(c_mid, c_out, kernel_size=3, stride=1, padding=(3 - 1) // 2 * 3, dilation=3)
 
         self.conv3 = nn.Conv1d(c_in, c_out, kernel_size=1, dilation=1)
 
@@ -166,18 +166,26 @@ class Discriminator(nn.Module):
             ResBlock(c_mid, c_mid, c_mid),
         )
 
-        self.res = ResBlock(c_mid, c_mid, c_out)
         self.conv = nn.Conv1d(c_mid, 1, kernel_size=3, stride=1, padding=1, dilation=1)
+        self.res = ResBlock(c_mid, c_mid, c_out)
 
-    def forward(self, x, speaker_embedding):
+    def forward(self, x, speaker_embedding=None):
+        """
+
+        x.shape: B x C x t
+        speaker_embedding.shape: B x d
+        """
         y = self.network1(x)
 
-        y1 = self.conv(y)
-        y2 = self.res(y)
-        y2 = torch.cat((y2, speaker_embedding), dim=-1)  # TODO tile speaker embedding
-
-        z = y1 + y2
-        return z
+        if speaker_embedding is not None:
+            y = self.res(y)
+            y = torch.bmm(speaker_embedding.unsqueeze(1), y)
+        else:
+            y = self.conv(y)
+        y = y.squeeze(1)
+        y = torch.mean(y, dim=-1)
+        y = torch.sigmoid(y)
+        return y
 
 
 #####
