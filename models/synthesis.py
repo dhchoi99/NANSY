@@ -7,6 +7,7 @@ import os
 
 import torch
 from torch import nn
+import torch.nn.functional as F
 
 
 class ConditionalLayerNorm(nn.Module):
@@ -54,7 +55,7 @@ class ConvGLU(nn.Module):
 
 
 class PreConv(nn.Module):
-    def __init__(self, c_in, c_mid, c_out=128):
+    def __init__(self, c_in, c_mid, c_out):
         super(PreConv, self).__init__()
         self.network = nn.Sequential(
             nn.Conv1d(c_in, c_mid, kernel_size=1, dilation=1),
@@ -74,52 +75,55 @@ class PreConv(nn.Module):
 
 
 class Generator(nn.Module):
-    def __init__(self, c_in, c_mid, c_out=128):
+    def __init__(self, c_in=1024, c_preconv=512, c_mid=128, c_out=80):
         super(Generator, self).__init__()
 
         self.network1 = nn.Sequential(
-            PreConv(c_in, c_mid, c_out),
+            PreConv(c_in, c_preconv, c_mid),
 
-            ConvGLU(c_out, ks=3, dilation=1, use_cLN=False),
-            ConvGLU(c_out, ks=3, dilation=3, use_cLN=False),
-            ConvGLU(c_out, ks=3, dilation=9, use_cLN=False),
-            ConvGLU(c_out, ks=3, dilation=27, use_cLN=False),
+            ConvGLU(c_mid, ks=3, dilation=1, use_cLN=False),
+            ConvGLU(c_mid, ks=3, dilation=3, use_cLN=False),
+            ConvGLU(c_mid, ks=3, dilation=9, use_cLN=False),
+            ConvGLU(c_mid, ks=3, dilation=27, use_cLN=False),
 
-            ConvGLU(c_out, ks=3, dilation=1, use_cLN=False),
-            ConvGLU(c_out, ks=3, dilation=3, use_cLN=False),
-            ConvGLU(c_out, ks=3, dilation=9, use_cLN=False),
-            ConvGLU(c_out, ks=3, dilation=27, use_cLN=False),
+            ConvGLU(c_mid, ks=3, dilation=1, use_cLN=False),
+            ConvGLU(c_mid, ks=3, dilation=3, use_cLN=False),
+            ConvGLU(c_mid, ks=3, dilation=9, use_cLN=False),
+            ConvGLU(c_mid, ks=3, dilation=27, use_cLN=False),
 
-            ConvGLU(c_out, ks=3, dilation=1, use_cLN=False),
-            ConvGLU(c_out, ks=3, dilation=3, use_cLN=False),
+            ConvGLU(c_mid, ks=3, dilation=1, use_cLN=False),
+            ConvGLU(c_mid, ks=3, dilation=3, use_cLN=False),
         )
 
         self.LR = nn.Sequential(
             nn.LeakyReLU(),
-            nn.Conv1d(c_out + 1, c_out + 1, kernel_size=1, stride=1))
+            nn.Conv1d(c_mid + 1, c_mid + 1, kernel_size=1, stride=1))
 
         self.network3 = nn.ModuleList([
-            ConvGLU(c_out + 1, ks=3, dilation=1, use_cLN=True),
-            ConvGLU(c_out + 1, ks=3, dilation=3, use_cLN=True),
-            ConvGLU(c_out + 1, ks=3, dilation=9, use_cLN=True),
-            ConvGLU(c_out + 1, ks=3, dilation=27, use_cLN=True),
+            ConvGLU(c_mid + 1, ks=3, dilation=1, use_cLN=True),
+            ConvGLU(c_mid + 1, ks=3, dilation=3, use_cLN=True),
+            ConvGLU(c_mid + 1, ks=3, dilation=9, use_cLN=True),
+            ConvGLU(c_mid + 1, ks=3, dilation=27, use_cLN=True),
 
-            ConvGLU(c_out + 1, ks=3, dilation=1, use_cLN=True),
-            ConvGLU(c_out + 1, ks=3, dilation=3, use_cLN=True),
-            ConvGLU(c_out + 1, ks=3, dilation=9, use_cLN=True),
-            ConvGLU(c_out + 1, ks=3, dilation=27, use_cLN=True),
+            ConvGLU(c_mid + 1, ks=3, dilation=1, use_cLN=True),
+            ConvGLU(c_mid + 1, ks=3, dilation=3, use_cLN=True),
+            ConvGLU(c_mid + 1, ks=3, dilation=9, use_cLN=True),
+            ConvGLU(c_mid + 1, ks=3, dilation=27, use_cLN=True),
 
-            ConvGLU(c_out + 1, ks=3, dilation=1, use_cLN=True),
-            ConvGLU(c_out + 1, ks=3, dilation=3, use_cLN=True),
+            ConvGLU(c_mid + 1, ks=3, dilation=1, use_cLN=True),
+            ConvGLU(c_mid + 1, ks=3, dilation=3, use_cLN=True),
         ])
 
-        self.lastConv = nn.Conv1d(c_out + 1, 1, kernel_size=1, dilation=1)
+        self.lastConv = nn.Conv1d(c_mid + 1, c_out, kernel_size=1, dilation=1)
 
     def forward(self, x, energy, speaker_embedding):
         # x.shape: B x C x t
         # energy.shape: B x 1 x t
         # embedding.shape: B x d x 1
         y = self.network1(x)
+        B, C, _ = y.shape
+
+        y = F.interpolate(y, energy.shape[-1])  # B x C x d
         y = torch.cat((y, energy), dim=1)  # channel-wise concat
         y = self.LR(y)
 
@@ -209,10 +213,10 @@ class Vocoder(nn.Module):
 
 
 if __name__ == '__main__':
-    lps = torch.randn(2, 1024, 100)
+    lps = torch.randn(2, 1024, 80)
     s = torch.randn(2, 192)
-    e = torch.randn(2, 1, 100)
-    ps = torch.randn(2, 984, 100)
+    e = torch.randn(2, 1, 80)
+    ps = torch.randn(2, 984, 80)
 
     g1 = Generator(1024, 512, 128)
     y1 = g1(lps, e, s)

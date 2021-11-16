@@ -55,7 +55,7 @@ class Energy(torch.nn.Module):
     def forward(self, mel):
         # mel: B x t x C
         # For the energy feature, we simply took an average from a log-mel spectrogram along the frequency axis.
-        y = torch.mean(mel, dim=-1, keepdim=True)
+        y = torch.mean(mel, dim=-1).unsqueeze(1)  # B x 1(channel) x feat_dim
         return y
 
 
