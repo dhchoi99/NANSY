@@ -65,12 +65,19 @@ class Pitch(torch.nn.Module):
         self.conf = conf
 
     @staticmethod
-    def midi_to_hz(m, sr):
-        return sr / 440. / math.pow(2, (m - 69) / 12.)
+    def midi_to_hz(m, semitone_range=12):
+        f = 440 * math.pow(2, (m - 69) / semitone_range)
+        return f
+
+    @staticmethod
+    def midi_to_lag(m, sr, semitone_range=12):
+        f = Pitch.midi_to_hz(m, semitone_range)
+        lag = sr / f
+        return lag
 
     @staticmethod
     def yingram_from_cmndf(cmndf, m, sr=22050):
-        c_m = Pitch.midi_to_hz(m, sr)
+        c_m = Pitch.midi_to_lag(m, sr)
         c_m_ceil = int(np.ceil(c_m))
         c_m_floor = int(np.floor(c_m))
 
@@ -88,6 +95,42 @@ class Pitch(torch.nn.Module):
     def forward(self, x: torch.Tensor):
         # x.shape: B x t
         raise NotImplementedError
+
+    @staticmethod
+    def yingram(x: torch.Tensor, W=2048, tau_max=2048, sr=22050, w_step=256):
+        # x.shape: t
+        x = x.detach().cpu().numpy()
+        yingram = []
+
+        w_len = W
+
+        startFrames = list(range(0, x.shape[-1] - w_len, w_step))
+        times = [t / float(sr) for t in startFrames]
+        frames = [x[..., t:t + W] for t in startFrames]
+
+        for frame in frames:
+            df = differenceFunction(frame, frame.shape[-1], tau_max)
+            cmndf = cumulativeMeanNormalizedDifferenceFunction(df, tau_max)
+
+            yins = []
+            for midi in range(5, 85):
+                y = Pitch.yingram_from_cmndf(cmndf, midi, sr)
+                yins.append(y)
+            yins = np.asarray(yins)
+            yingram.append(yins)
+        yingram = np.asarray(yingram)
+        yingram = torch.from_numpy(yingram).float()
+        return yingram
+
+    @staticmethod
+    def yingram_batch(x, W=2048, tau_max=2048, sr=22050, w_step=256):
+        batch_results = []
+        for i in range(len(x)):
+            yingram = Pitch.yingram(x[i], W, tau_max, sr, w_step)
+            batch_results.append(yingram)
+        result = torch.stack(batch_results, dim=0)
+        result = result.permute((0, 2, 1))
+        return result
 
 
 if __name__ == '__main__':

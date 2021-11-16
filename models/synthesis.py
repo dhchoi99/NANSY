@@ -213,15 +213,15 @@ class Vocoder(nn.Module):
 
 
 if __name__ == '__main__':
-    lps = torch.randn(2, 1024, 80)
+    lps = torch.randn(2, 1024, 128)
     s = torch.randn(2, 192)
-    e = torch.randn(2, 1, 80)
-    ps = torch.randn(2, 984, 80)
+    e = torch.randn(2, 128)
+    ps = torch.randn(2, 80, 128)
 
-    g1 = Generator(1024, 512, 128)
+    g1 = Generator(1024, 512, 128, 80)
     y1 = g1(lps, e, s)
     print(y1.shape)
 
-    g2 = Generator(984, 512, 128)
+    g2 = Generator(80, 512, 128, 80)
     y2 = g2(ps, e, s)
     print(y2.shape)
