@@ -1,0 +1,6 @@
+[submodule "hifi-gan"]
+	path = hifi-gan
+	url = https://github.com/jik876/hifi-gan.git
+[submodule "vctk-silence-labels"]
+	path = vctk-silence-labels
+	url = https://github.com/nii-yamagishilab/vctk-silence-labels.git

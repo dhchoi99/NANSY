@@ -18,6 +18,18 @@ class VCTKDataset(BaseDataset):
 
     def read_metadata(self):
         mode = self.conf.mode
+
+        path_timestamps = self.conf.path.timestamp
+
+        timestamps = {}
+        with open(path_timestamps, 'r') as f:
+            timestamps_list = f.readlines()
+        for line in timestamps_list:
+            timestamp_data = line.strip().split(' ')
+            if len(timestamp_data) == 3:
+                file_id, t_start, t_end = timestamp_data
+                timestamps[file_id] = (float(t_start), float(t_end))
+
         path_metadata = self.conf.path.configs[mode]
 
         with open(path_metadata, 'r') as f:
@@ -27,11 +39,15 @@ class VCTKDataset(BaseDataset):
 
         for line in file_lists:
             wav_path, txt, speaker_id = line.split('|')
-            data = {
-                'wav_path': wav_path,
-                'text': txt
-            }
-            data_list.append(data)
+            file_id = os.path.split(wav_path)[-1].split('-22k')[0]
+
+            if file_id in timestamps.keys():
+                data = {
+                    'wav_path': wav_path,
+                    'text': txt,
+                    'timestamp': timestamps[file_id]
+                }
+                data_list.append(data)
 
         return data_list
 
@@ -58,7 +74,10 @@ class VCTKDataset(BaseDataset):
         window_size_16k = int(time_size * 16000)
         assert len(wav_22k_torch) > window_size
 
-        t_start = random.uniform(0, (len(wav_22k_torch) - window_size - w_len) / 22050.)
+        t_pad = 0.5  # time in second, considering total length=1.488
+        t_start_min = max(0., data['timestamp'][0] - t_pad)
+        t_start_max = min(data['timestamp'][1] + t_pad, (len(wav_22k_torch) - window_size - w_len) / 22050.)
+        t_start = random.uniform(t_start_min, t_start_max)
         t_end = t_start + time_size
 
         w_start_22k = int(t_start * 22050)
