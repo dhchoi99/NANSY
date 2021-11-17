@@ -53,14 +53,23 @@ def apply_formant_and_pitch_shift(sound: parselmouth.Sound, formant_shift_ratio=
             new_pitch_median = 0.0
     except:
         new_pitch_median = 0.0
-
-    new_sound = parselmouth.praat.call(
-        sound, "Change gender", 75, 600,
-        formant_shift_ratio,
-        new_pitch_median,
-        pitch_range_ratio,
-        duration_factor
-    )
+    try:
+        new_sound = parselmouth.praat.call(
+            sound, "Change gender", 75, 600,
+            formant_shift_ratio,
+            new_pitch_median,
+            pitch_range_ratio,
+            duration_factor
+        )
+    except Exception as e:
+        print(e)
+        new_sound = parselmouth.praat.call(
+            sound, "Change gender", 75, 600,
+            formant_shift_ratio,
+            0.0,
+            pitch_range_ratio,
+            duration_factor
+        )
     return new_sound
 
 
