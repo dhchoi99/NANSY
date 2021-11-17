@@ -176,7 +176,7 @@ class Synthesis(nn.Module):
         result['source'] = self.source_generator(ps, e, s)
         result['gen_mel'] = result['filter'] + result['source']
         with torch.no_grad():
-            result['wav'] = self.vocoder(result['gen_mel'])
+            result['audio_gen'] = self.vocoder(result['gen_mel'])
         return result
 
     def train(self, mode: bool = True):

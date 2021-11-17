@@ -18,7 +18,7 @@ pl:
 
 logging:
   log_dir: /raid/vision/dhchoi/log/nansy/
-  seed: "00_test"
+  seed: "04_00"
 
   save_files: [
       './*.py',
@@ -72,11 +72,11 @@ models:
         lr: 1e-4
         betas: [ 0.5, 0.9 ]
 
-  Discriminator:
-    class: models.synthesis.Discriminator
-
-    optim:
-      class: torch.optim.Adam
-      kwargs:
-        lr: 1e-4
-        betas: [ 0.5, 0.9 ]
+#  Discriminator:
+#    class: models.synthesis.Discriminator
+#
+#    optim:
+#      class: torch.optim.Adam
+#     kwargs:
+#        lr: 1e-4
+#        betas: [ 0.5, 0.9 ]

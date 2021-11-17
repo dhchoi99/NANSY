@@ -88,6 +88,7 @@ class Trainer(pl.LightningModule):
     def training_step(self, batch, batch_idx):
         loss = {}
         logs = {}
+        logs.update(batch)
 
         logs['lps'] = self.networks['Analysis'].linguistic(batch['audio_f'])
         logs['s_pos'] = self.networks['Analysis'].speaker(batch['audio_16k'])
@@ -142,13 +143,18 @@ class Trainer(pl.LightningModule):
                 value = value.squeeze()
                 if value.ndim == 0:
                     tensorboard.add_scalar(f'{mode}/{key}', value, self.global_step)
-                if value.ndim == 3:
+                elif value.ndim == 3:
                     if value.shape[0] == 3:  # if 3-dim image
                         tensorboard.add_image(f'{mode}/{key}', value, self.global_step, dataformats='CHW')
                     else:  # B x H x W shaped images
                         value_numpy = value[0].detach().cpu().numpy()  # select one in batch
                         plt_image = self.plot_spectrogram_to_numpy(value_numpy)
                         tensorboard.add_image(f'{mode}/{key}', plt_image, self.global_step, dataformats='HWC')
+                if 'audio' in key:
+                    sample_rate = 22050
+                    if '16k' in key:
+                        sample_rate = 16000
+                    tensorboard.add_audio(f'{mode}/{key}', value[0].unsqueeze(0), self.global_step, sample_rate=sample_rate)
 
             if isinstance(value, np.ndarray):
                 if value.ndim == 3:
