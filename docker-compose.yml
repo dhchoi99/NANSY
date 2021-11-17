@@ -1,0 +1,18 @@
+version: "2.3"
+
+services:
+  dhc_nansy:
+    image: nvcr.io/nvidia/pytorch:21.06-py3
+    environment:
+      - "LC_ALL=C.UTF-8"
+      - "NVIDIA_VISIBLE_DEVICES=0,1"
+    cpuset: "32-63,160-191"
+    runtime: nvidia
+    ipc: host
+    ports:
+      - "39962:39962"
+      - "39963:8888"
+    network_mode: bridge
+    volumes:
+      - "/home/dhchoi/NANSY:/root/NANSY"
+      - "/raid/vision/dhchoi:/raid/vision/dhchoi"

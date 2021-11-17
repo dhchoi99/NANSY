@@ -1,3 +1,4 @@
 praat-parselmouth
-torchaudio>=0.8.0
-transformers
+transformers==4.12.4
+omegaconf
+pytorch_lightning
