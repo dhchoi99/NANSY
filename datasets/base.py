@@ -52,7 +52,8 @@ class MultiDataset(BaseDataset):
             conf_dataset.mode = self.conf.mode  # TODO
             module, cls = conf_dataset['class'].rsplit(".", 1)
             D = getattr(importlib.import_module(module, package=None), cls)
-            key = conf_dataset.id
+            # key = conf_dataset.id
+            key = cls
             d = D(conf_dataset)
             datasets[key] = d
             idx2item += [(key, idx) for idx in range(len(d))]

@@ -18,7 +18,7 @@ pl:
 
 logging:
   log_dir: /DATA1/dhchoi/log/nansy/
-  seed: 01
+  seed: "01"
 
   save_files: [
       './*.py',
@@ -29,3 +29,55 @@ logging:
       'utils/*.*',
   ]
 
+datasets:
+  train:
+    class: datasets.base.MultiDataset
+    datasets: [
+        'configs/datasets/vctk.yaml',
+    ]
+
+
+    mode: train
+    batch_size: 2
+    shuffle: True
+    num_workers: 4
+
+  eval:
+    class: datasets.base.MultiDataset
+    datasets: [
+        'configs/datasets/vctk.yaml',
+    ]
+
+    mode: eval
+    batch_size: 2
+    shuffle: False
+    num_workers: 4
+
+
+models:
+  Analysis:
+    class: models.analysis.Analysis
+
+    optim:
+      class: torch.optim.Adam
+      kwargs:
+        lr: 1e-4
+        betas: [ 0.5, 0.9 ]
+
+  Synthesis:
+    class: models.synthesis.Synthesis
+
+    optim:
+      class: torch.optim.Adam
+      kwargs:
+        lr: 1e-4
+        betas: [ 0.5, 0.9 ]
+
+  D:
+    class: models.synthesis.Discriminator
+
+    optim:
+      class: torch.optim.Adam
+      kwargs:
+        lr: 1e-4
+        betas: [ 0.5, 0.9 ]

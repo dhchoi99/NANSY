@@ -133,6 +133,63 @@ class Generator(nn.Module):
         return y
 
 
+class Synthesis(nn.Module):
+    def __init__(self, conf):
+        super(Synthesis, self).__init__()
+        self.conf = conf
+
+        self.filter_generator = Generator(1024, 512, 128, 80)
+        self.source_generator = Generator(50, 512, 128, 80)
+
+        path_config = './configs/hifi-gan/config.json'
+        with open(path_config) as f:
+            data = f.read()
+        json_config = json.loads(data)
+
+        class AttrDict(dict):
+            def __init__(self, *args, **kwargs):
+                super(AttrDict, self).__init__(*args, **kwargs)
+                self.__dict__ = self
+
+        hifigan_config = AttrDict(json_config)
+        self.vocoder = hifigan_vocoder(hifigan_config)
+
+        path_ckpt = './configs/hifi-gan/generator_v1'
+
+        def load_checkpoint(filepath):
+            assert os.path.isfile(filepath)
+            print("Loading '{}'".format(filepath))
+            checkpoint_dict = torch.load(filepath)
+            print("Complete.")
+            return checkpoint_dict
+
+        state_dict_g = load_checkpoint(path_ckpt)
+        self.vocoder.load_state_dict(state_dict_g['generator'])
+        self.vocoder.eval()
+
+        for param in self.vocoder.parameters():
+            param.requires_grad = False
+
+    def forward(self, lps, s, e, ps):
+        result = {}
+        result['filter'] = self.filter_generator(lps, e, s)
+        result['source'] = self.source_generator(ps, e, s)
+        result['gen_mel'] = result['filter'] + result['source']
+        with torch.no_grad():
+            result['wav'] = self.vocoder(result['gen_mel'])
+        return result
+
+    def train(self, mode: bool = True):
+        if not isinstance(mode, bool):
+            raise ValueError("training mode is expected to be boolean")
+        self.training = mode
+        # for module in self.children():
+        #     module.train(mode)
+        self.filter_generator.train(mode)
+        self.source_generator.train(mode)
+        return self
+
+
 #####
 
 class ResBlock(nn.Module):
@@ -154,8 +211,11 @@ class ResBlock(nn.Module):
 
 
 class Discriminator(nn.Module):
-    def __init__(self, c_in=80, c_mid=128, c_out=192):
+    def __init__(self, conf):
         super(Discriminator, self).__init__()
+        c_in = 80
+        c_mid = 128
+        c_out = 192
 
         self.network1 = nn.Sequential(
             nn.Conv1d(c_in, c_mid, kernel_size=3, stride=1, padding=1, dilation=1),
@@ -186,38 +246,6 @@ class Discriminator(nn.Module):
         y = torch.mean(y, dim=-1)
         y = torch.sigmoid(y)
         return y
-
-
-#####
-class AttrDict(dict):
-    def __init__(self, *args, **kwargs):
-        super(AttrDict, self).__init__(*args, **kwargs)
-        self.__dict__ = self
-
-
-class Vocoder(nn.Module):
-    def __init__(self, path_config='./configs/hifi-gan/config.json', path_ckpt='./configs/hifi-gan/generator_v1'):
-        super(Vocoder, self).__init__()
-
-        with open(path_config) as f:
-            data = f.read()
-        json_config = json.loads(data)
-        h = AttrDict(json_config)
-        self.network = hifigan_vocoder(h)
-
-        state_dict_g = self.load_checkpoint(path_ckpt)
-        self.network.load_state_dict(state_dict_g['generator'])
-
-        for param in self.network.parameters():
-            param.requires_grad = False
-
-    @staticmethod
-    def load_checkpoint(filepath):
-        assert os.path.isfile(filepath)
-        print("Loading '{}'".format(filepath))
-        checkpoint_dict = torch.load(filepath)
-        print("Complete.")
-        return checkpoint_dict
 
 
 if __name__ == '__main__':

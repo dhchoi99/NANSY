@@ -16,6 +16,7 @@ class Linguistic(torch.nn.Module):
         self.wav2vec2 = transformers.Wav2Vec2ForPreTraining.from_pretrained("facebook/wav2vec2-large-xlsr-53")
         for param in self.wav2vec2.parameters():
             param.requires_grad = False
+        self.wav2vec2.eval()
 
     def forward(self, x):
         # x.shape: B x t
@@ -23,6 +24,14 @@ class Linguistic(torch.nn.Module):
         y = outputs.hidden_states[1]
         y = y.permute((0, 2, 1))  # B x t x C -> B x C x t
         return y
+
+    def train(self, mode: bool = True):
+        if not isinstance(mode, bool):
+            raise ValueError("training mode is expected to be boolean")
+        self.training = mode
+        # for module in self.children():
+        #     module.train(mode)
+        return self
 
 
 class Speaker(torch.nn.Module):
@@ -33,6 +42,7 @@ class Speaker(torch.nn.Module):
         self.wav2vec2 = transformers.Wav2Vec2ForPreTraining.from_pretrained("facebook/wav2vec2-large-xlsr-53")
         for param in self.wav2vec2.parameters():
             param.requires_grad = False
+        self.wav2vec2.eval()
 
         # c_in = 1024 for wav2vec2
         # original paper used 512 and 192 for c_mid and c_out, respectively
@@ -45,6 +55,15 @@ class Speaker(torch.nn.Module):
         y = y.permute((0, 2, 1))  # B x t x C -> B x C x t
         y = self.spk(y)
         return y
+
+    def train(self, mode: bool = True):
+        if not isinstance(mode, bool):
+            raise ValueError("training mode is expected to be boolean")
+        self.training = mode
+        # for module in self.children():
+        #     module.train(mode)
+        self.spk.train(mode)
+        return self
 
 
 class Energy(torch.nn.Module):
@@ -128,9 +147,20 @@ class Pitch(torch.nn.Module):
         for i in range(len(x)):
             yingram = Pitch.yingram(x[i], W, tau_max, sr, w_step)
             batch_results.append(yingram)
-        result = torch.stack(batch_results, dim=0)
+        result = torch.stack(batch_results, dim=0).float()
         result = result.permute((0, 2, 1))
         return result
+
+
+class Analysis(torch.nn.Module):
+    def __init__(self, conf):
+        super(Analysis, self).__init__()
+        self.conf = conf
+
+        self.linguistic = Linguistic()
+        self.speaker = Speaker()
+        self.energy = Energy()
+        self.pitch = Pitch()
 
 
 if __name__ == '__main__':

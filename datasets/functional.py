@@ -39,11 +39,15 @@ def wav_to_Tensor(wav):
 
 def apply_formant_and_pitch_shift(sound: parselmouth.Sound, formant_shift_ratio=1., pitch_shift_ratio=1.,
                                   pitch_range_ratio=1., duration_factor=1.):
-    pitch = sound.to_pitch()
-    # pitch = parselmouth.praat.call(sound, "To Pitch", 0, 75, 600)
+    # pitch = sound.to_pitch()
+    pitch = parselmouth.praat.call(sound, "To Pitch", 0, 75, 600)
 
-    pitch_mean = parselmouth.praat.call(pitch, "Get mean", 0, 0, "Hertz")
-    new_pitch_median = pitch_mean * pitch_shift_ratio
+    # pitch_mean = parselmouth.praat.call(pitch, "Get mean", 0, 0, "Hertz")
+    try:
+        pitch_median = parselmouth.praat.call(pitch, "Get quantile", 0.0, 0.0, 0.5, "Hertz")
+        new_pitch_median = pitch_median * pitch_shift_ratio
+    except:
+        new_pitch_median = 0.0
 
     new_sound = parselmouth.praat.call(
         sound, "Change gender", 75, 600,

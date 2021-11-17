@@ -1,12 +1,14 @@
-class: VCTKDataset
+class: datasets.vctk.VCTKDataset
+load:
+  audio: 'configs/audio/22k.yaml'
 
 path:
-  root: /raid/audio/common/ttsdata/
-  wav22: /raid/audio/common/ttsdata/VCTK-Corpus/wav22
-  wav16: /raid/audio/common/ttsdata/VCTK-Corpus/wav16
-  txt: /raid/audio/common/ttsdata/VCTK-Corpus/VCTK-Corpus/txt
+  root: /raid/vision/dhchoi/data/
+  wav22: /raid/vision/dhchoi/data/VCTK-Corpus/wav22
+  wav16: /raid/vision/dhchoi/data/VCTK-Corpus/wav16
+  txt: /raid/vision/dhchoi/data/VCTK-Corpus/txt
 
   configs:
-    train: /raid/audio/common/ttsdata/multi_filelist/vctk_22k_train.txt
-    eval: /raid/audio/common/ttsdata/multi_filelist/vctk_22k_val.txt
-    test: /raid/audio/common/ttsdata/multi_filelist/vctk_22k_test.txt
+    train: /raid/vision/dhchoi/data/VCTK-Corpus/vctk_22k_train.txt
+    eval: /raid/vision/dhchoi/data/VCTK-Corpus/vctk_22k_val.txt
+    test: /raid/vision/dhchoi/data/VCTK-Corpus/vctk_22k_test.txt

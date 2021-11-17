@@ -1,2 +1,3 @@
 praat-parselmouth
 torchaudio
+transformers

@@ -1,0 +1,27 @@
+frame_window: 6  # param for video frame
+
+num_mels: 80
+rescale: True
+rescaling_max: 0.9
+
+use_lws: False
+
+n_fft: 1024
+hop_size: 256
+win_size: 1024
+sample_rate: 22050
+frame_shift_ms: None
+
+signal_normalization: True
+allow_clipping_in_normalization: True
+symmetric_mels: True
+
+max_abs_value: 4.0
+
+preemphasize: True
+preemphasis: 0.97
+
+min_level_db: -100
+ref_level_db: 20
+fmin: 0
+fmax: 8000
