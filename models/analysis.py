@@ -20,7 +20,8 @@ class Linguistic(torch.nn.Module):
 
     def forward(self, x):
         # x.shape: B x t
-        outputs = self.wav2vec2(x, output_hidden_states=True)
+        with torch.no_grad():
+            outputs = self.wav2vec2(x, output_hidden_states=True)
         y = outputs.hidden_states[1]
         y = y.permute((0, 2, 1))  # B x t x C -> B x C x t
         return y
@@ -50,7 +51,8 @@ class Speaker(torch.nn.Module):
 
     def forward(self, x):
         # x.shape: B x t
-        outputs = self.wav2vec2(x, output_hidden_states=True)
+        with torch.no_grad():
+            outputs = self.wav2vec2(x, output_hidden_states=True)
         y = outputs.hidden_states[12]
         y = y.permute((0, 2, 1))  # B x t x C -> B x C x t
         y = self.spk(y)

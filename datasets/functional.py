@@ -45,7 +45,12 @@ def apply_formant_and_pitch_shift(sound: parselmouth.Sound, formant_shift_ratio=
     # pitch_mean = parselmouth.praat.call(pitch, "Get mean", 0, 0, "Hertz")
     try:
         pitch_median = parselmouth.praat.call(pitch, "Get quantile", 0.0, 0.0, 0.5, "Hertz")
-        new_pitch_median = pitch_median * pitch_shift_ratio
+        if not math.isnan(pitch_median):
+            new_pitch_median = pitch_median * pitch_shift_ratio
+            if math.isnan(new_pitch_median):
+                new_pitch_median = 0.0
+        else:
+            new_pitch_median = 0.0
     except:
         new_pitch_median = 0.0
 
