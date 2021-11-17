@@ -38,7 +38,7 @@ class VCTKDataset(CustomDataset):
             wav_path_22k = os.path.join(self.conf.path.root, wav_path)
             wav_path_16k = wav_path_22k.replace('wav22', 'wav16')
 
-            if file_id in timestamps.keys() and timestamps[file_id][1] - timestamps[file_id][0] > 1.58:
+            if file_id in timestamps.keys():
                 data = {
                     'wav_path_22k': wav_path_22k,
                     'wav_path_16k': wav_path_16k,
