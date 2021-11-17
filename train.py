@@ -5,6 +5,7 @@ import os
 from omegaconf import OmegaConf
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks import ModelCheckpoint
+from pytorch_lightning.loggers import TensorBoardLogger
 
 from trainer import Trainer
 import utils.logging
@@ -29,7 +30,7 @@ def main():
 
     conf = OmegaConf.load(args.config)
 
-    conf.logging.log_dir = os.path.join(conf.logging.log_dir, conf.logging.seed)
+    conf.logging.log_dir = os.path.join(conf.logging.log_dir, str(conf.logging.seed))
     os.makedirs(conf.logging.log_dir, exist_ok=True)
 
     save_file_dir = os.path.join(conf.logging.log_dir, 'code')
@@ -43,7 +44,13 @@ def main():
 
     checkpoint_callback = ModelCheckpoint(dirpath=checkpoint_dir, **conf.pl.checkpoint.callback)
 
+    tensorboard_dir = os.path.join(conf.logging.log_dir, 'tensorboard')
+    os.makedirs(tensorboard_dir, exist_ok=True)
+    logger = TensorBoardLogger(tensorboard_dir)
+    logger.log_hyperparams(conf)
+
     trainer = pl.Trainer(
+        logger=logger,
         gpus=args.gpus,
         callbacks=[checkpoint_callback],
         weights_save_path=checkpoint_dir,
