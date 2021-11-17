@@ -82,10 +82,20 @@ class CustomDataset(BaseDataset):
 
         return_data['audio_f'] = f(wav_16k, sr=16000)[0].float()
         return_data['audio_16k'] = wav_16k
+
+        t_negative = t_start
+        while t_negative == t_start:
+            t_negative = random.uniform(t_audio_start, t_audio_end)
+        w_start_16k_negative = int(t_negative * 16000)
+        wav_16k_negative = wav_16k_torch[w_start_16k_negative:w_start_16k_negative + self.window_size_16k]
+        return_data['audio_16k_negative'] = wav_16k_negative
+
         return_data['audio_22k'] = wav_22k
         return_data['audio_g'] = g(wav_22k_yin, sr=22050)[0].float()
 
-        return_data['mel_22k'] = torch.from_numpy(utils.audio.mel_from_audio(self.conf.audio, wav_22k.numpy())).float()
+        return_data['mel_22k'] = torch.from_numpy(
+            utils.audio.mel_from_audio(self.conf.audio, wav_22k.numpy())
+        ).float().permute((1, 0))
         return_data['t'] = t_start
 
         return return_data

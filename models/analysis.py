@@ -76,7 +76,7 @@ class Energy(torch.nn.Module):
     def forward(self, mel):
         # mel: B x t x C
         # For the energy feature, we simply took an average from a log-mel spectrogram along the frequency axis.
-        y = torch.mean(mel, dim=-1).unsqueeze(1)  # B x 1(channel) x feat_dim
+        y = torch.mean(mel, dim=1, keepdim=True)  # B x 1(channel) x t
         return y
 
 
@@ -150,7 +150,7 @@ class Pitch(torch.nn.Module):
             yingram = Pitch.yingram(x[i], W, tau_max, sr, w_step)
             batch_results.append(yingram)
         result = torch.stack(batch_results, dim=0).float()
-        result = result.permute((0, 2, 1))
+        result = result.permute((0, 2, 1)).to(x.device)
         return result
 
 

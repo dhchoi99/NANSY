@@ -217,7 +217,7 @@ class Discriminator(nn.Module):
         c_mid = 128
         c_out = 192
 
-        self.network1 = nn.Sequential(
+        self.phi = nn.Sequential(
             nn.Conv1d(c_in, c_mid, kernel_size=3, stride=1, padding=1, dilation=1),
             ResBlock(c_mid, c_mid, c_mid),
             ResBlock(c_mid, c_mid, c_mid),
@@ -225,27 +225,23 @@ class Discriminator(nn.Module):
             ResBlock(c_mid, c_mid, c_mid),
             ResBlock(c_mid, c_mid, c_mid),
         )
-
-        self.conv = nn.Conv1d(c_mid, 1, kernel_size=3, stride=1, padding=1, dilation=1)
         self.res = ResBlock(c_mid, c_mid, c_out)
 
-    def forward(self, x, speaker_embedding=None):
+        self.psi = nn.Conv1d(c_mid, 1, kernel_size=3, stride=1, padding=1, dilation=1)
+
+    def forward(self, mel, positive, negative):
         """
 
         x.shape: B x C x t
         speaker_embedding.shape: B x d
         """
-        y = self.network1(x)
-
-        if speaker_embedding is not None:
-            y = self.res(y)
-            y = torch.bmm(speaker_embedding.unsqueeze(1), y)
-        else:
-            y = self.conv(y)
-        y = y.squeeze(1)
-        y = torch.mean(y, dim=-1)
-        y = torch.sigmoid(y)
-        return y
+        pred1 = self.psi(self.phi(mel))
+        pred2 = torch.bmm(positive.unsqueeze(1), self.res(self.phi(mel)))
+        pred3 = torch.bmm(negative.unsqueeze(1), self.res(self.phi(mel)))
+        result = pred1 + pred2 - pred3
+        result = result.squeeze(1)
+        result = torch.mean(result, dim=-1)
+        return result
 
 
 if __name__ == '__main__':

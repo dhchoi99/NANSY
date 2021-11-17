@@ -1,4 +1,5 @@
 import importlib
+import random
 
 from omegaconf import OmegaConf
 from torch.utils.data import Dataset
@@ -28,9 +29,9 @@ class BaseDataset(Dataset):
                 result = self.getitem(idx)
                 return result
             except Exception as e:
-                raise e
-                # print(f'error {e} on idx {idx}')
-                # idx = random.randint(0, len(self))
+                # raise e
+                print(f'error {e} on idx {idx}')
+                idx = random.randint(0, len(self))
 
     # endregion
 

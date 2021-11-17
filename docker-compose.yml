@@ -5,8 +5,8 @@ services:
     image: nvcr.io/nvidia/pytorch:21.06-py3
     environment:
       - "LC_ALL=C.UTF-8"
-      - "NVIDIA_VISIBLE_DEVICES=0,1"
-    cpuset: "32-63,160-191"
+      - "NVIDIA_VISIBLE_DEVICES=2,3"
+    cpuset: "0-31,128-159"
     runtime: nvidia
     ipc: host
     ports:

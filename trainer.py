@@ -1,9 +1,12 @@
 import importlib
 
+import numpy as np
 import torch
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
 import pytorch_lightning as pl
+
+MATPLOTLIB_FLAG = False
 
 
 class Trainer(pl.LightningModule):
@@ -86,35 +89,91 @@ class Trainer(pl.LightningModule):
         loss = {}
         logs = {}
 
-        lps = self.networks['Analysis'].linguistic(batch['audio_f'])
-        s = self.networks['Analysis'].speaker(batch['audio_16k'])
-        e = self.networks['Analysis'].energy(batch['mel_22k'])
-        ps = self.networks['Analysis'].pitch.yingram_batch(batch['audio_g']).to(lps.device)
-        ps = ps[:, 19:69]
+        logs['lps'] = self.networks['Analysis'].linguistic(batch['audio_f'])
+        logs['s_pos'] = self.networks['Analysis'].speaker(batch['audio_16k'])
+        logs['s_neg'] = self.networks['Analysis'].speaker(batch['audio_16k_negative'])
+        logs['e'] = self.networks['Analysis'].energy(batch['mel_22k'])
+        logs['ps'] = self.networks['Analysis'].pitch.yingram_batch(batch['audio_g'])
+        logs['ps'] = logs['ps'][:, 19:69]
 
-        result = self.networks['Synthesis'](lps, s, e, ps)
+        result = self.networks['Synthesis'](logs['lps'], logs['s_pos'], logs['e'], logs['ps'])
+        logs.update(result)
+        logs['gt_mel'] = batch['mel_22k']
 
-        loss_mel = F.l1_loss(result['gen_mel'], batch['mel_22k'].permute((0, 2, 1)))
+        loss['mel'] = F.l1_loss(logs['gen_mel'], logs['gt_mel'])
+        loss['backward'] = loss['mel']
+
+        if 'Discriminator' in self.networks.keys():
+            loss['D_gen'] = torch.mean(self.networks['Discriminator'](logs['gen_mel'], logs['s_pos'], logs['s_neg']))
+            loss['backward'] = loss['backward'] + loss['D_gen']
 
         opts = self.optimizers()
         opts[self.opt_tag['Analysis']].zero_grad()
         opts[self.opt_tag['Synthesis']].zero_grad()
 
-        loss_mel.backward()
+        loss['backward'].backward()
+
+        if 'Discriminator' in self.networks.keys():
+            opts[self.opt_tag['Discriminator']].zero_grad()
+
+            logs['gen_mel'] = logs['gen_mel'].detach()
+            logs['s_pos'] = logs['s_pos'].detach()
+            logs['s_neg'] = logs['s_neg'].detach()
+            loss['D_gen'] = torch.mean(self.networks['Discriminator'](logs['gen_mel'], logs['s_pos'], logs['s_neg']))
+            loss['D_gt'] = torch.mean(self.networks['Discriminator'](logs['gt_mel'], logs['s_pos'], logs['s_neg']))
+            loss['D_backward'] = loss['D_gt'] - loss['D_gen']
+            loss['D_backward'].backward()
 
         opts[self.opt_tag['Analysis']].step()
         opts[self.opt_tag['Synthesis']].step()
+        if 'Discriminator' in self.networks.keys():
+            opts[self.opt_tag['Discriminator']].step()
+
+        self.awesome_logging(loss, mode='train')
+        self.awesome_logging(logs, mode='train')
 
     def validation_step(self, batch, batch_idx):
-        loss = {}
-        logs = {}
+        pass
 
-        lps = self.networks['Analysis'].linguistic(batch['audio_f'])
-        s = self.networks['Analysis'].speaker(batch['audio_16k'])
-        e = self.networks['Analysis'].energy(batch['mel_22k'])
-        ps = self.networks['Analysis'].pitch.yingram_batch(batch['audio_g']).to(lps.device)
-        ps = ps[:, 19:69]
+    def awesome_logging(self, data, mode):
+        tensorboard = self.logger.experiment
+        for key, value in data.items():
+            if isinstance(value, torch.Tensor):
+                value = value.squeeze()
+                if value.ndim == 0:
+                    tensorboard.add_scalar(f'{mode}/{key}', value, self.global_step)
+                if value.ndim == 3:
+                    if value.shape[0] == 3:  # if 3-dim image
+                        tensorboard.add_image(f'{mode}/{key}', value, self.global_step, dataformats='CHW')
+                    else:  # B x H x W shaped images
+                        value_numpy = value[0].detach().cpu().numpy()  # select one in batch
+                        plt_image = self.plot_spectrogram_to_numpy(value_numpy)
+                        tensorboard.add_image(f'{mode}/{key}', plt_image, self.global_step, dataformats='HWC')
 
-        result = self.networks['Synthesis'](lps, s, e, ps)
+            if isinstance(value, np.ndarray):
+                if value.ndim == 3:
+                    tensorboard.add_image(f'{mode}/{key}', value, self.global_step, dataformats='HWC')
 
-        loss_mel = F.l1_loss(result['gen_mel'], batch['mel_22k'].permute((0, 2, 1)))
+    @staticmethod
+    def plot_spectrogram_to_numpy(spectrogram):
+        global MATPLOTLIB_FLAG
+        if not MATPLOTLIB_FLAG:
+            import matplotlib
+            matplotlib.use("Agg")
+            MATPLOTLIB_FLAG = True
+        import matplotlib.pylab as plt
+        import numpy as np
+
+        fig, ax = plt.subplots(figsize=(10, 2))
+        im = ax.imshow(spectrogram, aspect="auto", origin="lower",
+                       interpolation='none')
+        plt.colorbar(im, ax=ax)
+        plt.xlabel("Frames")
+        plt.ylabel("Channels")
+        plt.tight_layout()
+
+        fig.canvas.draw()
+        data = np.fromstring(fig.canvas.tostring_rgb(), dtype=np.uint8, sep='')
+        data = data.reshape(fig.canvas.get_width_height()[::-1] + (3,))
+        plt.close()
+        return data
