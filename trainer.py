@@ -18,6 +18,8 @@ class Trainer(pl.LightningModule):
 
         self.opt_tag = {key: None for key in self.networks.keys()}
 
+        self.losses = self.build_losses()
+
     def train_dataloader(self):
         conf_dataset = self.conf.datasets['train']
         module, cls = conf_dataset['class'].rsplit('.', 1)
@@ -53,6 +55,7 @@ class Trainer(pl.LightningModule):
     def build_losses(self):
         losses_dict = {}
         losses_dict['L1'] = torch.nn.L1Loss()
+        losses_dict['BCE'] = torch.nn.BCEWithLogitsLoss()
 
         return losses_dict
 
@@ -85,28 +88,45 @@ class Trainer(pl.LightningModule):
     def automatic_optimization(self):
         return False
 
-    def training_step(self, batch, batch_idx):
+    def common_step(self, batch, batch_idx):
         loss = {}
         logs = {}
         logs.update(batch)
 
-        logs['lps'] = self.networks['Analysis'].linguistic(batch['audio_f'])
-        logs['s_pos'] = self.networks['Analysis'].speaker(batch['audio_16k'])
-        logs['s_neg'] = self.networks['Analysis'].speaker(batch['audio_16k_negative'])
-        logs['e'] = self.networks['Analysis'].energy(batch['mel_22k'])
-        logs['ps'] = self.networks['Analysis'].pitch.yingram_batch(batch['audio_g'])
+        logs['lps'] = self.networks['Analysis'].linguistic(batch['gt_audio_f'])
+        logs['s_pos'] = self.networks['Analysis'].speaker(batch['gt_audio_16k'])
+        logs['s_neg'] = self.networks['Analysis'].speaker(batch['gt_audio_16k_negative'])
+        logs['e'] = self.networks['Analysis'].energy(batch['gt_mel_22k'])
+        logs['ps'] = self.networks['Analysis'].pitch.yingram_batch(batch['gt_audio_g'])
         logs['ps'] = logs['ps'][:, 19:69]
 
         result = self.networks['Synthesis'](logs['lps'], logs['s_pos'], logs['e'], logs['ps'])
         logs.update(result)
-        logs['gt_mel'] = batch['mel_22k']
 
-        loss['mel'] = F.l1_loss(logs['gen_mel'], logs['gt_mel'])
+        loss['mel'] = F.l1_loss(logs['gen_mel'], logs['gt_mel_22k'])
         loss['backward'] = loss['mel']
 
+        # for G
         if 'Discriminator' in self.networks.keys():
-            loss['D_gen'] = torch.mean(self.networks['Discriminator'](logs['gen_mel'], logs['s_pos'], logs['s_neg']))
-            loss['backward'] = loss['backward'] + loss['D_gen']
+            pred_gen = self.networks['Discriminator'](logs['gen_mel'], logs['s_pos'], logs['s_neg'])
+            loss['D_gen_forG'] = self.losses['BCE'](pred_gen, torch.ones_like(pred_gen))
+            loss['backward'] = loss['backward'] + loss['D_gen_forG']
+
+        # for D
+        if 'Discriminator' in self.networks.keys():
+            logs['gen_mel'] = logs['gen_mel'].detach()
+            logs['s_pos'] = logs['s_pos'].detach()
+            logs['s_neg'] = logs['s_neg'].detach()
+            pred_gen = self.networks['Discriminator'](logs['gen_mel'], logs['s_pos'], logs['s_neg'])
+            pred_gt = self.networks['Discriminator'](logs['gt_mel_22k'], logs['s_pos'], logs['s_neg'])
+            loss['D_gen_forD'] = self.losses['BCE'](pred_gen, torch.zeros_like(pred_gen))
+            loss['D_gt_forD'] = self.losses['BCE'](pred_gen, torch.ones_like(pred_gt))
+            loss['D_backward'] = loss['D_gt_forD'] + loss['D_gen_forD']
+
+        return loss, logs
+
+    def training_step(self, batch, batch_idx):
+        loss, logs = self.common_step(batch, batch_idx)
 
         opts = self.optimizers()
         opts[self.opt_tag['Analysis']].zero_grad()
@@ -116,13 +136,6 @@ class Trainer(pl.LightningModule):
 
         if 'Discriminator' in self.networks.keys():
             opts[self.opt_tag['Discriminator']].zero_grad()
-
-            logs['gen_mel'] = logs['gen_mel'].detach()
-            logs['s_pos'] = logs['s_pos'].detach()
-            logs['s_neg'] = logs['s_neg'].detach()
-            loss['D_gen'] = torch.mean(self.networks['Discriminator'](logs['gen_mel'], logs['s_pos'], logs['s_neg']))
-            loss['D_gt'] = torch.mean(self.networks['Discriminator'](logs['gt_mel'], logs['s_pos'], logs['s_neg']))
-            loss['D_backward'] = loss['D_gt'] - loss['D_gen']
             loss['D_backward'].backward()
 
         opts[self.opt_tag['Analysis']].step()
@@ -134,7 +147,9 @@ class Trainer(pl.LightningModule):
         self.awesome_logging(logs, mode='train')
 
     def validation_step(self, batch, batch_idx):
-        pass
+        loss, logs = self.common_step(batch, batch_idx)
+        self.awesome_logging(loss, mode='eval')
+        self.awesome_logging(logs, mode='eval')
 
     def awesome_logging(self, data, mode):
         tensorboard = self.logger.experiment
@@ -154,7 +169,8 @@ class Trainer(pl.LightningModule):
                     sample_rate = 22050
                     if '16k' in key:
                         sample_rate = 16000
-                    tensorboard.add_audio(f'{mode}/{key}', value[0].unsqueeze(0), self.global_step, sample_rate=sample_rate)
+                    tensorboard.add_audio(f'{mode}/{key}', value[0].unsqueeze(0), self.global_step,
+                                          sample_rate=sample_rate)
 
             if isinstance(value, np.ndarray):
                 if value.ndim == 3:

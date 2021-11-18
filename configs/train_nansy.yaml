@@ -18,7 +18,7 @@ pl:
 
 logging:
   log_dir: /raid/vision/dhchoi/log/nansy/
-  seed: "04_00"
+  seed: "06"
 
   save_files: [
       './*.py',
@@ -37,9 +37,9 @@ datasets:
     ]
 
     mode: train
-    batch_size: 2
+    batch_size: 4
     shuffle: True
-    num_workers: 32
+    num_workers: 16
 
   eval:
     class: datasets.base.MultiDataset
@@ -48,7 +48,7 @@ datasets:
     ]
 
     mode: eval
-    batch_size: 2
+    batch_size: 4
     shuffle: False
     num_workers: 4
 
@@ -72,11 +72,11 @@ models:
         lr: 1e-4
         betas: [ 0.5, 0.9 ]
 
-#  Discriminator:
-#    class: models.synthesis.Discriminator
-#
-#    optim:
-#      class: torch.optim.Adam
-#     kwargs:
-#        lr: 1e-4
-#        betas: [ 0.5, 0.9 ]
+  Discriminator:
+    class: models.synthesis.Discriminator
+
+    optim:
+      class: torch.optim.Adam
+      kwargs:
+        lr: 1e-4
+        betas: [ 0.5, 0.9 ]

@@ -172,9 +172,9 @@ class Synthesis(nn.Module):
 
     def forward(self, lps, s, e, ps):
         result = {}
-        result['filter'] = self.filter_generator(lps, e, s)
-        result['source'] = self.source_generator(ps, e, s)
-        result['gen_mel'] = result['filter'] + result['source']
+        result['mel_filter'] = self.filter_generator(lps, e, s)
+        result['mel_source'] = self.source_generator(ps, e, s)
+        result['gen_mel'] = result['mel_filter'] + result['mel_source']
         with torch.no_grad():
             result['audio_gen'] = self.vocoder(result['gen_mel'])
         return result
