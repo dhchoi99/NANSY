@@ -113,11 +113,6 @@ class CustomDataset(BaseDataset):
 
         mel_22k = self.load_mel(wav_22k_path, sr=22050)
 
-        # t_min = max(data['timestamp'][0], 0)
-        # t_max = min(data['timestamp'][1], wav_22k_torch.shape[-1] / 22050.)
-        # t_start0 = random.uniform(t_min - self.time_size, t_max)
-        # mel_start = int(t_start0 * (22050 / self.conf.audio.hop_size))
-
         mel_start = random.randint(0, mel_22k.shape[-1] - 1)  # 30 for safety index
         mel_end = mel_start + self.mel_len
         gt_mel_22k = self.crop_audio(mel_22k, mel_start, mel_end, value=int(torch.min(mel_22k)))
@@ -147,13 +142,13 @@ class CustomDataset(BaseDataset):
 
         wav_16k_negative = self.crop_audio(wav_16k_torch, w_start_16k_negative, w_end_16k_negative)
 
-        # return_data['gt_audio_f'] = f(wav_16k, sr=16000)[0].float()
+        return_data['gt_audio_f'] = f(wav_16k, sr=16000)[0]
         return_data['gt_audio_16k'] = wav_16k
 
         return_data['gt_audio_16k_negative'] = wav_16k_negative
 
         return_data['gt_audio_22k'] = wav_22k
-        # return_data['gt_audio_g'] = g(wav_22k_yin, sr=22050)[0].float()
+        return_data['gt_audio_g'] = g(wav_22k_yin, sr=22050)[0]
 
         return_data['t'] = t_start
 

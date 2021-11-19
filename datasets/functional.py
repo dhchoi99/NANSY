@@ -5,20 +5,21 @@ import random
 import numpy as np
 import parselmouth
 import torch
+import torchaudio
 import torchaudio.functional as AF
 
 
 # __init__(self: parselmouth.Sound, other: parselmouth.Sound) -> None \
 # __init__(self: parselmouth.Sound, values: numpy.ndarray[numpy.float64], sampling_frequency: Positive[float] = 44100.0, start_time: float = 0.0) -> None \
 # __init__(self: parselmouth.Sound, file_path: str) -> None
-def wav_to_Sound(wav):
+def wav_to_Sound(wav, sampling_frequency=22050):
     if isinstance(wav, parselmouth.Sound):
         sound = wav
     elif isinstance(wav, np.ndarray):
-        sound = parselmouth.Sound(wav)
+        sound = parselmouth.Sound(wav, sampling_frequency=sampling_frequency)
     elif isinstance(wav, list):
         wav_np = np.asarray(wav)
-        sound = parselmouth.Sound(np.asarray(wav_np))
+        sound = parselmouth.Sound(np.asarray(wav_np), sampling_frequency=sampling_frequency)
     else:
         raise NotImplementedError
     return sound
@@ -40,29 +41,50 @@ def wav_to_Tensor(wav):
 def apply_formant_and_pitch_shift(sound: parselmouth.Sound, formant_shift_ratio=1., pitch_shift_ratio=1.,
                                   pitch_range_ratio=1., duration_factor=1.):
     # pitch = sound.to_pitch()
-    pitch = parselmouth.praat.call(sound, "To Pitch", 0, 75, 600)
-
-    # pitch_mean = parselmouth.praat.call(pitch, "Get mean", 0, 0, "Hertz")
-    try:
-        pitch_median = parselmouth.praat.call(pitch, "Get quantile", 0.0, 0.0, 0.5, "Hertz")
-        if not math.isnan(pitch_median):
-            new_pitch_median = pitch_median * pitch_shift_ratio
-            if math.isnan(new_pitch_median):
+    if pitch_shift_ratio != 1.:
+        try:
+            pitch = parselmouth.praat.call(sound, "To Pitch", 0, 75, 600)
+            # pitch_mean = parselmouth.praat.call(pitch, "Get mean", 0, 0, "Hertz")
+            try:
+                pitch_median = parselmouth.praat.call(pitch, "Get quantile", 0.0, 0.0, 0.5, "Hertz")
+                if not math.isnan(pitch_median):
+                    # print('not nan')
+                    new_pitch_median = pitch_median * pitch_shift_ratio
+                    if math.isnan(new_pitch_median):
+                        new_pitch_median = 0.0
+                else:
+                    # print('nan')
+                    new_pitch_median = 0.0
+            except:
+                print('e2')
                 new_pitch_median = 0.0
-        else:
+        except:
+            print('e1')
             new_pitch_median = 0.0
-    except:
-        new_pitch_median = 0.0
-    try:
-        new_sound = parselmouth.praat.call(
-            sound, "Change gender", 75, 600,
-            formant_shift_ratio,
-            new_pitch_median,
-            pitch_range_ratio,
-            duration_factor
-        )
-    except Exception as e:
-        print(e)
+
+        try:
+            new_sound = parselmouth.praat.call(
+                sound, "Change gender", 75, 600,
+                formant_shift_ratio,
+                new_pitch_median,
+                pitch_range_ratio,
+                duration_factor
+            )
+        except Exception as e:
+            print('e3')
+            print(e)
+            print(formant_shift_ratio)
+            print(new_pitch_median)
+            print(pitch_range_ratio)
+            print(duration_factor)
+            new_sound = parselmouth.praat.call(
+                sound, "Change gender", 75, 600,
+                formant_shift_ratio,
+                0.0,
+                pitch_range_ratio,
+                duration_factor
+            )
+    else:
         new_sound = parselmouth.praat.call(
             sound, "Change gender", 75, 600,
             formant_shift_ratio,
@@ -240,23 +262,37 @@ def apply_iir_filter(wav: torch.Tensor, ftype, dBgain, cutoff_freq, sample_rate,
 peq = parametric_equalizer
 
 
-def f(wav: torch.Tensor, sr: int) -> torch.Tensor:
-    """
-
-    :param wav: torch.Tensor of shape (N,)
-    :param sr: sampling rate
-    :return: torch.Tensor of shape (M, )
-    """
-    wav = peq(wav, sr)
-    wav_numpy = wav.numpy()
-    sound = wav_to_Sound(wav_numpy)
-    sound = formant_and_pitch_shift(sound)
-    return torch.from_numpy(sound.values)
+# def f(wav: torch.Tensor, sr: int) -> torch.Tensor:
+#     """
+#
+#     :param wav: torch.Tensor of shape (N,)
+#     :param sr: sampling rate
+#     :return: torch.Tensor of shape (M, )
+#     """
+#     wav = peq(wav, sr)
+#     wav_numpy = wav.numpy()
+#     sound = wav_to_Sound(wav_numpy, sampling_frequency=sr)
+#     sound = formant_and_pitch_shift(sound)
+#     return torch.from_numpy(sound.values)
 
 
 def g(wav: torch.Tensor, sr: int) -> torch.Tensor:
     wav = peq(wav, sr)
     wav_numpy = wav.numpy()
-    sound = wav_to_Sound(wav_numpy)
+    sound = wav_to_Sound(wav_numpy, sampling_frequency=sr)
     sound = formant_shift(sound)
-    return torch.from_numpy(sound.values)
+    wav = torch.from_numpy(sound.values).float()
+    return wav
+
+def f(wav: torch.Tensor, sr: int) -> torch.Tensor:
+    wav = peq(wav, sr)
+    wav_numpy = wav.numpy()
+    sound = wav_to_Sound(wav_numpy, sampling_frequency=sr)
+    sound = formant_shift(sound)
+    wav = torch.from_numpy(sound.values).float()
+
+    pitch_movement = random.randint(-24, 24)
+    wav, _ = torchaudio.sox_effects.apply_effects_tensor(
+        wav, sample_rate=sr, effects=[['pitch', f'{pitch_movement}']]
+    )
+    return wav
