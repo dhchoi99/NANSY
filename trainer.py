@@ -143,8 +143,9 @@ class Trainer(pl.LightningModule):
         if 'Discriminator' in self.networks.keys():
             opts[self.opt_tag['Discriminator']].step()
 
-        self.awesome_logging(loss, mode='train')
-        self.awesome_logging(logs, mode='train')
+        if self.global_step % self.conf.logging.freq == 0:
+            self.awesome_logging(loss, mode='train')
+            self.awesome_logging(logs, mode='train')
 
     def validation_step(self, batch, batch_idx):
         loss, logs = self.common_step(batch, batch_idx)
@@ -199,3 +200,32 @@ class Trainer(pl.LightningModule):
         data = data.reshape(fig.canvas.get_width_height()[::-1] + (3,))
         plt.close()
         return data
+
+    def test_time_self_adaptation(self, batch, batch_idx):
+        loss = {}
+        logs = {}
+        logs.update(batch)
+
+        logs['lps'] = self.networks['Analysis'].linguistic(batch['gt_audio_f'])
+        logs['s_pos'] = self.networks['Analysis'].speaker(batch['gt_audio_16k'])
+        logs['s_neg'] = self.networks['Analysis'].speaker(batch['gt_audio_16k_negative'])
+        logs['e'] = self.networks['Analysis'].energy(batch['gt_mel_22k'])
+        logs['ps'] = self.networks['Analysis'].pitch.yingram_batch(batch['gt_audio_g'])
+        logs['ps'] = logs['ps'][:, 19:69]
+
+        result = self.networks['Synthesis'](logs['lps'], logs['s_pos'], logs['e'], logs['ps'])
+        logs.update(result)
+
+        loss['mel'] = F.l1_loss(logs['gen_mel'], logs['gt_mel_22k'])
+        loss['backward'] = loss['mel']
+
+        opt = torch.optim.Adam(logs['lps'], lr=1e-4, betas=(0.5, 0.9))
+        opt.zero_grad()
+        loss['mel'].backward()
+        opt.step()
+
+        with torch.no_grad():
+            logs['mel_filter'] = self.networks['Synthesis'](logs['lps'], logs['e'], logs['s_pos'])
+            logs['gen_mel'] = logs['mel_filter'] + logs['mel_source']
+            logs['audio_gen'] = self.networks['Synthesis'].vocoder(logs['gen_mel'])
+        return loss, logs

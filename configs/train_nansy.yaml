@@ -4,7 +4,7 @@ pl:
       save_top_k: -1
       monitor: "g/train_L1"
       verbose: True
-      every_n_epochs: 5 #epochs
+      every_n_epochs: 1 #epochs
 
   trainer:
     gradient_clip_val: 0 # don't clip (default value)
@@ -18,7 +18,8 @@ pl:
 
 logging:
   log_dir: /raid/vision/dhchoi/log/nansy/
-  seed: "06"
+  seed: "12"
+  freq: 100
 
   save_files: [
       './*.py',
@@ -37,7 +38,7 @@ datasets:
     ]
 
     mode: train
-    batch_size: 4
+    batch_size: 8
     shuffle: True
     num_workers: 16
 
@@ -48,7 +49,7 @@ datasets:
     ]
 
     mode: eval
-    batch_size: 4
+    batch_size: 8
     shuffle: False
     num_workers: 4
 

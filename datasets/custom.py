@@ -142,13 +142,13 @@ class CustomDataset(BaseDataset):
 
         wav_16k_negative = self.crop_audio(wav_16k_torch, w_start_16k_negative, w_end_16k_negative)
 
-        return_data['gt_audio_f'] = f(wav_16k, sr=16000)[0]
+        return_data['gt_audio_f'] = f(wav_16k, sr=16000)
         return_data['gt_audio_16k'] = wav_16k
 
         return_data['gt_audio_16k_negative'] = wav_16k_negative
 
         return_data['gt_audio_22k'] = wav_22k
-        return_data['gt_audio_g'] = g(wav_22k_yin, sr=22050)[0]
+        return_data['gt_audio_g'] = g(wav_22k_yin, sr=22050)
 
         return_data['t'] = t_start
 

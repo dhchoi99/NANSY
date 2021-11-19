@@ -281,7 +281,7 @@ def g(wav: torch.Tensor, sr: int) -> torch.Tensor:
     wav_numpy = wav.numpy()
     sound = wav_to_Sound(wav_numpy, sampling_frequency=sr)
     sound = formant_shift(sound)
-    wav = torch.from_numpy(sound.values).float()
+    wav = torch.from_numpy(sound.values).float().squeeze(0)
     return wav
 
 
@@ -291,11 +291,21 @@ def f(wav: torch.Tensor, sr: int) -> torch.Tensor:
     sound = wav_to_Sound(wav_numpy, sampling_frequency=sr)
     sound = formant_shift(sound)
     wav_numpy = sound.values
+    wav = torch.from_numpy(wav_numpy).float()
 
     n_steps = random.uniform(-24, 24)
     wav_numpy = librosa.effects.pitch_shift(
         wav_numpy[0], sr=sr,
         n_steps=n_steps, bins_per_octave=12
     )
-    wav = torch.from_numpy(wav_numpy).float().unsqueeze(0)
+    wav = torch.from_numpy(wav_numpy).float()
+
+    # n_steps = random.randint(-24, 24)
+    # with torch.no_grad():
+    #     wav = AF.pitch_shift(
+    #         wav, sample_rate=sr,
+    #         n_steps=n_steps, bins_per_octave=12,
+    #         n_fft=1024, win_length=1024, hop_length=256
+    #     )
+
     return wav
