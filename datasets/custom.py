@@ -54,7 +54,7 @@ class CustomDataset(BaseDataset):
 
     def load_mel(self, wav_path, sr=None):
         mel_path = wav_path + '.dhc.mel'
-        if not os.path.exists(wav_path):
+        if not os.path.exists(mel_path):
             wav_numpy, _ = self.load_wav(wav_path, sr)
             mel = torch.from_numpy(
                 utils.audio.mel_from_audio(self.conf.audio, wav_numpy)
@@ -115,7 +115,7 @@ class CustomDataset(BaseDataset):
 
         mel_start = random.randint(0, mel_22k.shape[-1] - 1)  # 30 for safety index
         mel_end = mel_start + self.mel_len
-        gt_mel_22k = self.crop_audio(mel_22k, mel_start, mel_end, value=int(torch.min(mel_22k)))
+        gt_mel_22k = self.crop_audio(mel_22k, mel_start, mel_end, value=-4)
         return_data['gt_mel_22k'] = gt_mel_22k
 
         t_start = mel_start * self.conf.audio.hop_size / 22050.
