@@ -2,6 +2,7 @@ import importlib
 import random
 
 from omegaconf import OmegaConf
+import parselmouth
 from torch.utils.data import Dataset
 from tqdm import tqdm, trange
 
@@ -28,10 +29,14 @@ class BaseDataset(Dataset):
             try:
                 result = self.getitem(idx)
                 return result
+            except AssertionError as e:
+                print(e)
+            except parselmouth.PraatError as e:
+                print(e)
             except Exception as e:
-                # raise e
-                print(f'error {e} on idx {idx}')
-                idx = random.randint(0, len(self))
+                raise e
+                # print(f'error {e} on idx {idx}')
+                # idx = random.randint(0, len(self))
 
     # endregion
 

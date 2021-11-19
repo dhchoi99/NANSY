@@ -8,7 +8,6 @@ import torch
 from datasets.base import BaseDataset
 from datasets.functional import f, g
 import utils.audio
-from utils.mel import mel_spectrogram
 
 
 class CustomDataset(BaseDataset):
@@ -53,6 +52,19 @@ class CustomDataset(BaseDataset):
             wav_torch = torch.from_numpy(wav_numpy).float()
         return wav_numpy, wav_torch
 
+    def load_mel(self, wav_path, sr=None):
+        mel_path = wav_path + '.dhc.mel'
+        if not os.path.exists(wav_path):
+            wav_numpy, _ = self.load_wav(wav_path, sr)
+            mel = torch.from_numpy(
+                utils.audio.mel_from_audio(self.conf.audio, wav_numpy)
+            ).float().permute((1, 0))
+            torch.save(mel, mel_path)
+        else:
+            mel = torch.load(mel_path, map_location='cpu')
+
+        return mel
+
     @staticmethod
     def pad_audio(x: torch.Tensor, length: int, value=0., pad_at='end'):
         # x: (..., T)
@@ -72,8 +84,13 @@ class CustomDataset(BaseDataset):
     def crop_audio(x: torch.Tensor, start: int, end: int, value=0.):
         # x.shape: (..., T)
         if start < 0:
-            y = x[..., :end]
-            y = CustomDataset.pad_audio(y, -start, value, pad_at='start')
+            if end > x.shape[-1]:
+                y = x
+                y = CustomDataset.pad_audio(y, -start, value, pad_at='start')
+                y = CustomDataset.pad_audio(y, end - x.shape[-1], value, pad_at='end')
+            else:
+                y = x[..., :end]
+                y = CustomDataset.pad_audio(y, -start, value, pad_at='start')
         elif end > x.shape[-1]:
             y = x[..., start:]
             y = CustomDataset.pad_audio(y, end - x.shape[-1], value, pad_at='end')
@@ -94,56 +111,49 @@ class CustomDataset(BaseDataset):
         wav_22k_numpy, wav_22k_torch = self.load_wav(wav_22k_path, 22050)
         wav_16k_numpy, wav_16k_torch = self.load_wav(wav_16k_path, 16000)
 
-        mel_22k_path = wav_22k_path + '.dhc.mel'
-        if not os.path.exists(mel_22k_path):
-            mel_22k = torch.from_numpy(
-                utils.audio.mel_from_audio(self.conf.audio, wav_22k_numpy)
-            ).float().permute((1, 0))
-            torch.save(mel_22k, mel_22k_path)
-        else:
-            mel_22k = torch.load(mel_22k_path, map_location='cpu')
+        mel_22k = self.load_mel(wav_22k_path, sr=22050)
 
-        t_min = max(data['timestamp'][0], 0)
-        t_max = min(data['timestamp'][1], wav_22k_torch.shape[-1] / 22050.)
-        t_start = random.uniform(t_min - self.time_size + self.praat_voice_time, t_max - 0.2)  # 0.2 for safety index
+        # t_min = max(data['timestamp'][0], 0)
+        # t_max = min(data['timestamp'][1], wav_22k_torch.shape[-1] / 22050.)
+        # t_start0 = random.uniform(t_min - self.time_size, t_max)
+        # mel_start = int(t_start0 * (22050 / self.conf.audio.hop_size))
 
-        # mel_start = random.randint(0, mel_22k.shape[-1] - 30)  # 30 for safety index
-        mel_start = int(t_start * (22050 / self.conf.audio.hop_size))
+        mel_start = random.randint(0, mel_22k.shape[-1] - 1)  # 30 for safety index
         mel_end = mel_start + self.mel_len
         gt_mel_22k = self.crop_audio(mel_22k, mel_start, mel_end, value=int(torch.min(mel_22k)))
         return_data['gt_mel_22k'] = gt_mel_22k
 
         t_start = mel_start * self.conf.audio.hop_size / 22050.
-
         w_start_22k = int(t_start * 22050)
         w_start_16k = int(t_start * 16000)
         w_end_22k = w_start_22k + self.window_size
         w_end_22k_yin = w_start_22k + self.yin_window_size
         w_end_16k = w_start_16k + self.window_size_16k
+        assert w_start_22k <= wav_22k_torch.shape[-1], '22k_1'
+        assert w_start_16k <= wav_16k_torch.shape[-1], '16k_1'
 
         wav_22k = self.crop_audio(wav_22k_torch, w_start_22k, w_end_22k)
         wav_16k = self.crop_audio(wav_16k_torch, w_start_16k, w_end_16k)
         wav_22k_yin = self.crop_audio(wav_22k_torch, w_start_22k, w_end_22k_yin)
 
-        # t_negative = t_start
-        # while t_negative == t_start:  # TODO for ablation: if diff(t_start, t_negative) > threshold
-        #     t_negative = random.uniform(t_min - self.time_size + self.praat_voice_time, t_max)
-        mel_start_negative = mel_start
+        mel_start_negative = mel_start  # TODO for ablation: if diff(t_start, t_negative) > threshold
         while mel_start_negative == mel_start:
-            mel_start_negative = random.randint(0, mel_22k.shape[-1])
-        t_negative = mel_start_negative * self.conf.audio.hop_size / 22050.
+            mel_start_negative = random.randint(0, mel_22k.shape[-1] - 1)
 
+        t_negative = mel_start_negative * self.conf.audio.hop_size / 22050.
         w_start_16k_negative = int(t_negative * 16000)
         w_end_16k_negative = w_start_16k_negative + self.window_size_16k
+        assert w_start_16k_negative <= wav_16k_torch.shape[-1], "16k_nega!!!!!!!!!!!!!!"
+
         wav_16k_negative = self.crop_audio(wav_16k_torch, w_start_16k_negative, w_end_16k_negative)
 
-        return_data['gt_audio_f'] = f(wav_16k, sr=16000)[0].float()
+        # return_data['gt_audio_f'] = f(wav_16k, sr=16000)[0].float()
         return_data['gt_audio_16k'] = wav_16k
 
         return_data['gt_audio_16k_negative'] = wav_16k_negative
 
         return_data['gt_audio_22k'] = wav_22k
-        return_data['gt_audio_g'] = g(wav_22k_yin, sr=22050)[0].float()
+        # return_data['gt_audio_g'] = g(wav_22k_yin, sr=22050)[0].float()
 
         return_data['t'] = t_start
 

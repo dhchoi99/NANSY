@@ -23,7 +23,9 @@ class VCTKDataset(CustomDataset):
             timestamp_data = line.strip().split(' ')
             if len(timestamp_data) == 3:
                 file_id, t_start, t_end = timestamp_data
-                timestamps[file_id] = (float(t_start), float(t_end))
+                t_start = float(t_start)
+                t_end = float(t_end)
+                timestamps[file_id] = (t_start, t_end)
 
         path_metadata = self.conf.path.configs[mode]
 
@@ -63,3 +65,24 @@ if __name__ == '__main__':
             print(key, value.shape)
         else:
             print(key, type(value))
+
+    from torch.utils.data import DataLoader
+
+    loader = DataLoader(d, 1, False, num_workers=8)
+
+
+    def cycle(iterable):
+        iterator = iter(iterable)
+        while True:
+            try:
+                yield next(iterator)
+            except StopIteration:
+                iterator = iter(iterable)
+
+
+    iterator = cycle(loader)
+
+    from tqdm import tqdm, trange
+
+    for idx in trange(len(d)):
+        data = next(iterator)
