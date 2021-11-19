@@ -86,3 +86,4 @@ if __name__ == '__main__':
 
     for idx in trange(len(d)):
         data = next(iterator)
+        assert data['gt_audio_f'].shape[-1] == 23776, f"{data['gt_audio_f'].shape}"

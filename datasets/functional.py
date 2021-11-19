@@ -2,10 +2,10 @@
 import math
 import random
 
+import librosa
 import numpy as np
 import parselmouth
 import torch
-import torchaudio
 import torchaudio.functional as AF
 
 
@@ -284,15 +284,18 @@ def g(wav: torch.Tensor, sr: int) -> torch.Tensor:
     wav = torch.from_numpy(sound.values).float()
     return wav
 
+
 def f(wav: torch.Tensor, sr: int) -> torch.Tensor:
     wav = peq(wav, sr)
     wav_numpy = wav.numpy()
     sound = wav_to_Sound(wav_numpy, sampling_frequency=sr)
     sound = formant_shift(sound)
-    wav = torch.from_numpy(sound.values).float()
+    wav_numpy = sound.values
 
-    pitch_movement = random.randint(-24, 24)
-    wav, _ = torchaudio.sox_effects.apply_effects_tensor(
-        wav, sample_rate=sr, effects=[['pitch', f'{pitch_movement}']]
+    n_steps = random.uniform(-24, 24)
+    wav_numpy = librosa.effects.pitch_shift(
+        wav_numpy[0], sr=sr,
+        n_steps=n_steps, bins_per_octave=12
     )
+    wav = torch.from_numpy(wav_numpy).float().unsqueeze(0)
     return wav
