@@ -1,4 +1,0 @@
-praat-parselmouth
-transformers==4.12.4
-omegaconf
-pytorch_lightning
