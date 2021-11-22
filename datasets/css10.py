@@ -45,14 +45,17 @@ class CSS10Dataset(CustomDataset):
 if __name__ == '__main__':
     from omegaconf import OmegaConf
 
-    conf_c = OmegaConf.load('configs/datasets/css10_chinese.yaml')
-    conf_c.mode = 'train'
-    d_c = CSS10Dataset(conf_c)
-    print(len(d_c))
-    data = d_c[0]
+    for file in os.listdir('configs/datasets'):
+        if file.strip().endswith('yaml') and file.startswith('css10'):
+            print(file)
+            conf_c = OmegaConf.load(f'configs/datasets/{file}')
+            conf_c.mode = 'train'
+            d_c = CSS10Dataset(conf_c)
+            print(len(d_c))
+            data = d_c[0]
 
-    for key, value in data.items():
-        if isinstance(value, torch.Tensor):
-            print(key, value.shape)
-        else:
-            print(key, type(value))
+            for key, value in data.items():
+                if isinstance(value, torch.Tensor):
+                    print(key, value.shape)
+                else:
+                    print(key, type(value))

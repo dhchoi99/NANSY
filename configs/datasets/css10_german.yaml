@@ -1,0 +1,7 @@
+class: datasets.css1l0.CSS10Dataset
+load:
+  audio: 'configs/audio/22k.yaml'
+
+path:
+  metadata: /raid/vision/dhchoi/data/CSS10/CSS_German/transcript.txt
+  root: /raid/vision/dhchoi/data/CSS10/CSS_German
