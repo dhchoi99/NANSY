@@ -293,7 +293,7 @@ def f(wav: torch.Tensor, sr: int) -> torch.Tensor:
     wav_numpy = sound.values
     wav = torch.from_numpy(wav_numpy).float()
 
-    n_steps = random.uniform(-24, 24)
+    n_steps = random.uniform(-12, 12)
     wav_numpy = librosa.effects.pitch_shift(
         wav_numpy[0], sr=sr,
         n_steps=n_steps, bins_per_octave=12

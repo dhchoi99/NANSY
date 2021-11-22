@@ -1,5 +1,4 @@
 # adapted from https://github.com/patriceguyot/Yin
-# https://pms.maum.ai/bitbucket/projects/BRAIN/repos/brain_mellotron/browse/yin.py
 # https://github.com/NVIDIA/mellotron/blob/master/yin.py
 
 import numpy as np
@@ -31,7 +30,7 @@ def differenceFunction(x, N, tau_max):
     return x_cumsum[w:w - tau_max:-1] + x_cumsum[w] - x_cumsum[:tau_max] - 2 * conv
 
 
-def cumulativeMeanNormalizedDifferenceFunction(df, N):
+def cumulativeMeanNormalizedDifferenceFunction(df, N, eps=1e-8):
     """
     Compute cumulative mean normalized difference function (CMND).
 
@@ -43,5 +42,6 @@ def cumulativeMeanNormalizedDifferenceFunction(df, N):
     :rtype: list
     """
     np.seterr(divide='ignore', invalid='ignore')
-    cmndf = df[1:] * range(1, N) / np.cumsum(df[1:]).astype(float)  # scipy method
+    # scipy method, assert df>0 for all element
+    cmndf = df[1:] * np.asarray(list(range(1, N))) / (np.cumsum(df[1:]).astype(float) + eps)
     return np.insert(cmndf, 0, 1)
