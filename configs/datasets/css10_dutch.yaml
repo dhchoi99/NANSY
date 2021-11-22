@@ -1,4 +1,4 @@
-class: datasets.css1l0.CSS10Dataset
+class: datasets.css10.CSS10Dataset
 load:
   audio: 'configs/audio/22k.yaml'
 

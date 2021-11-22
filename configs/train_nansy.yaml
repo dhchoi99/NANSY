@@ -2,7 +2,7 @@ pl:
   checkpoint:
     callback:
       save_top_k: -1
-      monitor: "g/train_L1"
+      monitor: "train/backward"
       verbose: True
       every_n_epochs: 1 #epochs
 
@@ -18,7 +18,7 @@ pl:
 
 logging:
   log_dir: /raid/vision/dhchoi/log/nansy/
-  seed: "12"
+  seed: "17"
   freq: 100
 
   save_files: [
@@ -34,22 +34,38 @@ datasets:
   train:
     class: datasets.base.MultiDataset
     datasets: [
-        'configs/datasets/vctk.yaml',
+        'configs/datasets/css10_chinese.yaml',
+        'configs/datasets/css10_dutch.yaml',
+        'configs/datasets/css10_finnish.yaml',
+        'configs/datasets/css10_german.yaml',
+        'configs/datasets/css10_greek.yaml',
+        'configs/datasets/css10_hungarian.yaml',
+        'configs/datasets/css10_japanese.yaml',
+        'configs/datasets/css10_russian.yaml',
+        'configs/datasets/css10_spanish.yaml',
     ]
 
     mode: train
-    batch_size: 8
+    batch_size: 32
     shuffle: True
     num_workers: 16
 
   eval:
     class: datasets.base.MultiDataset
     datasets: [
-        'configs/datasets/vctk.yaml',
+        'configs/datasets/css10_chinese.yaml',
+        'configs/datasets/css10_dutch.yaml',
+        'configs/datasets/css10_finnish.yaml',
+        'configs/datasets/css10_german.yaml',
+        'configs/datasets/css10_greek.yaml',
+        'configs/datasets/css10_hungarian.yaml',
+        'configs/datasets/css10_japanese.yaml',
+        'configs/datasets/css10_russian.yaml',
+        'configs/datasets/css10_spanish.yaml',
     ]
 
     mode: eval
-    batch_size: 8
+    batch_size: 32
     shuffle: False
     num_workers: 4
 

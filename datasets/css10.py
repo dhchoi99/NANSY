@@ -28,7 +28,7 @@ class CSS10Dataset(CustomDataset):
             data_list.append(data)
 
         # TODO split train/test set
-        train_val_split_idx = int(len(data_list) * 0.8)
+        train_val_split_idx = int(len(data_list) * 0.9)
         mode = self.conf.mode
         if mode == 'train':
             data_list = data_list[:train_val_split_idx]
