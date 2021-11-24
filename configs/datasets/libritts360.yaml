@@ -1,0 +1,10 @@
+class: datasets.libritts.LibriTTSDataset
+load:
+  audio: 'configs/audio/22k.yaml'
+
+path:
+  root: /raid/vision/dhchoi/data/
+
+  configs:
+    train: /raid/vision/dhchoi/data/LibriTTS/libritts_train_clean_360_audiopath_text_sid_train.txt
+    eval: /raid/vision/dhchoi/data/LibriTTS/libritts_train_clean_360_audiopath_text_sid_val.txt

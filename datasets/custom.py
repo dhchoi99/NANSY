@@ -82,19 +82,19 @@ class CustomDataset(BaseDataset):
         return y
 
     @staticmethod
-    def crop_audio(x: torch.Tensor, start: int, end: int, value=0.):
+    def crop_audio(x: torch.Tensor, start: int, end: int, padding_value=0.):
         # x.shape: (..., T)
         if start < 0:
             if end > x.shape[-1]:
                 y = x
-                y = CustomDataset.pad_audio(y, -start, value, pad_at='start')
-                y = CustomDataset.pad_audio(y, end - x.shape[-1], value, pad_at='end')
+                y = CustomDataset.pad_audio(y, -start, padding_value, pad_at='start')
+                y = CustomDataset.pad_audio(y, end - x.shape[-1], padding_value, pad_at='end')
             else:
                 y = x[..., :end]
-                y = CustomDataset.pad_audio(y, -start, value, pad_at='start')
+                y = CustomDataset.pad_audio(y, -start, padding_value, pad_at='start')
         elif end > x.shape[-1]:
             y = x[..., start:]
-            y = CustomDataset.pad_audio(y, end - x.shape[-1], value, pad_at='end')
+            y = CustomDataset.pad_audio(y, end - x.shape[-1], padding_value, pad_at='end')
         else:
             y = x[..., start:end]
         assert y.shape[-1] == end - start, f'{x.shape}, {start}, {end}, {y.shape}'
@@ -104,7 +104,9 @@ class CustomDataset(BaseDataset):
         data = self.data[idx]
 
         return_data = {}
-        return_data.update(data)
+        # return_data.update(data)
+        return_data['wav_path_22k'] = data['wav_path_22k']
+        return_data['text'] = data['text']
 
         wav_22k_path = data['wav_path_22k']
         wav_16k_path = data['wav_path_16k']
@@ -120,7 +122,7 @@ class CustomDataset(BaseDataset):
 
         mel_start = random.randint(0, mel_22k.shape[-1] - 1)  # 30 for safety index
         mel_end = mel_start + self.mel_len
-        gt_mel_22k = self.crop_audio(mel_22k, mel_start, mel_end, value=-4)
+        gt_mel_22k = self.crop_audio(mel_22k, mel_start, mel_end, padding_value=-4)
         return_data['gt_mel_22k'] = gt_mel_22k
 
         t_start = mel_start * self.conf.audio.hop_size / 22050.
