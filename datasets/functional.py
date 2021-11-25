@@ -5,6 +5,7 @@ import random
 import librosa
 import numpy as np
 import parselmouth
+import scipy.signal
 import torch
 import torchaudio.functional as AF
 
@@ -246,7 +247,7 @@ def peaking_coeffs(dBgain, cutoff_freq, sample_rate, Q):
     return b0, b1, b2, a0, a1, a2
 
 
-def apply_iir_filter(wav: torch.Tensor, ftype, dBgain, cutoff_freq, sample_rate, Q):
+def apply_iir_filter(wav: torch.Tensor, ftype, dBgain, cutoff_freq, sample_rate, Q, torch_backend=False):
     if ftype == 'low':
         b0, b1, b2, a0, a1, a2 = lowShelf_coeffs(dBgain, cutoff_freq, sample_rate, Q)
     elif ftype == 'high':
@@ -255,7 +256,15 @@ def apply_iir_filter(wav: torch.Tensor, ftype, dBgain, cutoff_freq, sample_rate,
         b0, b1, b2, a0, a1, a2 = peaking_coeffs(dBgain, cutoff_freq, sample_rate, Q)
     else:
         raise NotImplementedError
-    return_wav = AF.biquad(wav, b0, b1, b2, a0, a1, a2)
+    if torch_backend:
+        return_wav = AF.biquad(wav, b0, b1, b2, a0, a1, a2)
+    else:
+        wav_numpy = wav.numpy()
+        b = np.asarray([b0, b1, b2])
+        a = np.asarray([a0, a1, a2])
+        zi = scipy.signal.lfilter_zi(b, a) * wav_numpy[0]
+        return_wav, _ = scipy.signal.lfilter(b, a, wav_numpy, zi=zi)
+        return_wav = torch.from_numpy(return_wav)
     return return_wav
 
 
