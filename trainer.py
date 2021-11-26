@@ -1,9 +1,15 @@
 import importlib
 
+hifigan = importlib.import_module('models.hifi-gan')
+hifigan_vocoder = getattr(hifigan, 'Generator')
+import json
+import os
+
 import numpy as np
 import torch
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
+import transformers
 import pytorch_lightning as pl
 
 MATPLOTLIB_FLAG = False
@@ -19,6 +25,48 @@ class Trainer(pl.LightningModule):
         self.opt_tag = {key: None for key in self.networks.keys()}
 
         self.losses = self.build_losses()
+
+        self.load_wav2vec2()
+        self.load_vocoder()
+
+    def load_wav2vec2(self):
+        self.wav2vec2 = transformers.Wav2Vec2ForPreTraining.from_pretrained(
+            "facebook/wav2vec2-large-xlsr-53")
+        for param in self.wav2vec2.parameters():
+            param.requires_grad = False
+        self.wav2vec2.eval()
+        self.wav2vec2 = self.wav2vec2.to(self.device)
+
+    def load_vocoder(self):
+        path_config = './configs/hifi-gan/config.json'
+        with open(path_config) as f:
+            data = f.read()
+        json_config = json.loads(data)
+
+        class AttrDict(dict):
+            def __init__(self, *args, **kwargs):
+                super(AttrDict, self).__init__(*args, **kwargs)
+                self.__dict__ = self
+
+        hifigan_config = AttrDict(json_config)
+        self.vocoder = hifigan_vocoder(hifigan_config)
+
+        path_ckpt = './configs/hifi-gan/generator_v1'
+
+        def load_checkpoint(filepath):
+            assert os.path.isfile(filepath)
+            print("Loading '{}'".format(filepath))
+            checkpoint_dict = torch.load(filepath)
+            print("Complete.")
+            return checkpoint_dict
+
+        state_dict_g = load_checkpoint(path_ckpt)
+        self.vocoder.load_state_dict(state_dict_g['generator'])
+        self.vocoder.eval()
+        self.vocoder = self.vocoder.to(self.device)
+
+        for param in self.vocoder.parameters():
+            param.requires_grad = False
 
     def train_dataloader(self):
         conf_dataset = self.conf.datasets['train']
@@ -93,14 +141,27 @@ class Trainer(pl.LightningModule):
         logs = {}
         logs.update(batch)
 
-        logs['lps'] = self.networks['Analysis'].linguistic(batch['gt_audio_f'])
-        logs['s_pos'] = self.networks['Analysis'].speaker(batch['gt_audio_16k'])
-        logs['s_neg'] = self.networks['Analysis'].speaker(batch['gt_audio_16k_negative'])
-        logs['e'] = self.networks['Analysis'].energy(batch['gt_mel_22k'])
-        logs['ps'] = self.networks['Analysis'].pitch.yingram_batch(batch['gt_audio_g'])
-        logs['ps'] = logs['ps'][:, 19:69]
+        with torch.no_grad():
+            wav2vec2_output = self.wav2vec2(batch['gt_audio_f'], output_hidden_states=True)
+            logs['lps'] = wav2vec2_output.hidden_states[1].permute((0, 2, 1))  # B x C x t
+
+            wav2vec2_output = self.wav2vec2(batch['gt_audio_16k'], output_hidden_states=True)
+            s_pos_pre = wav2vec2_output.hidden_states[12].permute((0, 2, 1))  # B x C x t
+            wav2vec2_output = self.wav2vec2(batch['gt_audio_16k_negative'], output_hidden_states=True)
+            s_neg_pre = wav2vec2_output.hidden_states[12].permute((0, 2, 1))  # B x C x t
+
+        # logs['s_pos'] = self.networks['Analysis'].speaker(batch['gt_audio_16k'])
+        # logs['s_neg'] = self.networks['Analysis'].speaker(batch['gt_audio_16k_negative'])
+        logs['s_pos'] = self.networks['Analysis'].speaker(s_pos_pre)
+        logs['s_neg'] = self.networks['Analysis'].speaker(s_neg_pre)
+
+        with torch.no_grad():
+            logs['e'] = self.networks['Analysis'].energy(batch['gt_mel_22k'])
+            logs['ps'] = self.networks['Analysis'].pitch.yingram_batch(batch['gt_audio_g'])
+            logs['ps'] = logs['ps'][:, 19:69]
 
         result = self.networks['Synthesis'](logs['lps'], logs['s_pos'], logs['e'], logs['ps'])
+        result['audio_gen'] = self.vocoder(result['gen_mel'])
         logs.update(result)
 
         loss['mel'] = F.l1_loss(logs['gen_mel'], logs['gt_mel_22k'])
@@ -120,7 +181,11 @@ class Trainer(pl.LightningModule):
             pred_gen = self.networks['Discriminator'](logs['gen_mel'], logs['s_pos'], logs['s_neg'])
             pred_gt = self.networks['Discriminator'](logs['gt_mel_22k'], logs['s_pos'], logs['s_neg'])
             loss['D_gen_forD'] = self.losses['BCE'](pred_gen, torch.zeros_like(pred_gen))
-            loss['D_gt_forD'] = self.losses['BCE'](pred_gen, torch.ones_like(pred_gt))
+            # if not torch.isfinite(loss['D_gen_forD']):
+            #     raise AssertionError('D_gen_forD')
+            loss['D_gt_forD'] = self.losses['BCE'](pred_gt, torch.ones_like(pred_gt))
+            # if not torch.isfinite(loss['D_gt_forD']):
+            #     raise AssertionError('D_gt_forD')
             loss['D_backward'] = loss['D_gt_forD'] + loss['D_gen_forD']
 
         return loss, logs
@@ -132,11 +197,16 @@ class Trainer(pl.LightningModule):
         opts[self.opt_tag['Analysis']].zero_grad()
         opts[self.opt_tag['Synthesis']].zero_grad()
 
-        loss['backward'].backward()
+        # loss['backward'].backward()
+        self.manual_backward(loss['backward'])
 
         if 'Discriminator' in self.networks.keys():
             opts[self.opt_tag['Discriminator']].zero_grad()
-            loss['D_backward'].backward()
+            # loss['D_backward'].backward()
+            self.manual_backward(loss['D_backward'])
+
+        # for model in self.networks.values():
+        #     torch.nn.utils.clip_grad_norm_(model.parameters(), 1)
 
         opts[self.opt_tag['Analysis']].step()
         opts[self.opt_tag['Synthesis']].step()
@@ -158,7 +228,8 @@ class Trainer(pl.LightningModule):
             if isinstance(value, torch.Tensor):
                 value = value.squeeze()
                 if value.ndim == 0:
-                    tensorboard.add_scalar(f'{mode}/{key}', value, self.global_step)
+                    # tensorboard.add_scalar(f'{mode}/{key}', value, self.global_step)
+                    self.log(f'{mode}/{key}', value)
                 elif value.ndim == 3:
                     if value.shape[0] == 3:  # if 3-dim image
                         tensorboard.add_image(f'{mode}/{key}', value, self.global_step, dataformats='CHW')

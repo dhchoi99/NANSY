@@ -152,7 +152,7 @@ class Synthesis(nn.Module):
                 self.__dict__ = self
 
         hifigan_config = AttrDict(json_config)
-        self.vocoder = hifigan_vocoder(hifigan_config)
+        # self.vocoder = hifigan_vocoder(hifigan_config)
 
         path_ckpt = './configs/hifi-gan/generator_v1'
 
@@ -164,19 +164,19 @@ class Synthesis(nn.Module):
             return checkpoint_dict
 
         state_dict_g = load_checkpoint(path_ckpt)
-        self.vocoder.load_state_dict(state_dict_g['generator'])
-        self.vocoder.eval()
+        # self.vocoder.load_state_dict(state_dict_g['generator'])
+        # self.vocoder.eval()
 
-        for param in self.vocoder.parameters():
-            param.requires_grad = False
+        # for param in self.vocoder.parameters():
+        #     param.requires_grad = False
 
     def forward(self, lps, s, e, ps):
         result = {}
         result['mel_filter'] = self.filter_generator(lps, e, s)
         result['mel_source'] = self.source_generator(ps, e, s)
         result['gen_mel'] = result['mel_filter'] + result['mel_source']
-        with torch.no_grad():
-            result['audio_gen'] = self.vocoder(result['gen_mel'])
+        # with torch.no_grad():
+        #     result['audio_gen'] = self.vocoder(result['gen_mel'])
         return result
 
     def train(self, mode: bool = True):

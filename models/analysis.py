@@ -101,6 +101,7 @@ class Pitch(torch.nn.Module):
         c_m = Pitch.midi_to_lag(m, sr)
         c_m_ceil = int(np.ceil(c_m))
         c_m_floor = int(np.floor(c_m))
+        assert c_m_ceil != c_m_floor
 
         y = (cmndf[c_m_ceil] - cmndf[c_m_floor]) / (c_m_ceil - c_m_floor) * (c_m - c_m_floor) + cmndf[c_m_floor]
         return y
@@ -129,7 +130,7 @@ class Pitch(torch.nn.Module):
         times = [t / float(sr) for t in startFrames]
         frames = [x[..., t:t + W] for t in startFrames]
 
-        for frame in frames:
+        for idx, frame in enumerate(frames):
             df = differenceFunction(frame, frame.shape[-1], tau_max)
             cmndf = cumulativeMeanNormalizedDifferenceFunction(df, tau_max)
 
@@ -159,8 +160,8 @@ class Analysis(torch.nn.Module):
         super(Analysis, self).__init__()
         self.conf = conf
 
-        self.linguistic = Linguistic()
-        self.speaker = Speaker()
+        # self.linguistic = Linguistic()
+        self.speaker = ECAPA_TDNN(c_in=1024, c_mid=512, c_out=192)
         self.energy = Energy()
         self.pitch = Pitch()
 
