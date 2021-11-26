@@ -31,8 +31,10 @@ class BaseDataset(Dataset):
                 return result
             except AssertionError as e:
                 print(e)
+                raise e
             except parselmouth.PraatError as e:
                 print(e)
+                raise e
             except Exception as e:
                 raise e
                 # print(f'error {e} on idx {idx}')
@@ -53,13 +55,14 @@ class MultiDataset(BaseDataset):
     def build_datasets(self, conf):
         idx2item = []
         datasets = {}
-        for path_conf in conf:
+        for idx, path_conf in enumerate(conf):
             conf_dataset = OmegaConf.load(path_conf)
             conf_dataset.mode = self.conf.mode  # TODO
             module, cls = conf_dataset['class'].rsplit(".", 1)
             D = getattr(importlib.import_module(module, package=None), cls)
             # key = conf_dataset.id
-            key = cls
+            # key = cls
+            key = str(idx)
             d = D(conf_dataset)
             datasets[key] = d
             idx2item += [(key, idx) for idx in range(len(d))]

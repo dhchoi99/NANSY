@@ -55,14 +55,15 @@ class CustomDataset(BaseDataset):
 
     def load_mel(self, wav_path, sr=None):
         mel_path = wav_path + '.dhc.mel'
-        if not os.path.exists(mel_path):
+        try:
+            mel = torch.load(mel_path, map_location='cpu')
+        except Exception as e:
+            print(e)
             wav_numpy, _ = self.load_wav(wav_path, sr)
             mel = torch.from_numpy(
                 utils.audio.mel_from_audio(self.conf.audio, wav_numpy)
             ).float().permute((1, 0))
             torch.save(mel, mel_path)
-        else:
-            mel = torch.load(mel_path, map_location='cpu')
 
         return mel
 

@@ -41,6 +41,7 @@ def main():
     utils.logging.save_files(save_file_dir, savefiles)
 
     checkpoint_dir = os.path.join(conf.logging.log_dir, 'checkpoints')
+    os.makedirs(checkpoint_dir, exist_ok=True)
 
     checkpoint_callback = ModelCheckpoint(dirpath=checkpoint_dir, **conf.pl.checkpoint.callback)
 
