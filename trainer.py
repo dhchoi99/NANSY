@@ -136,6 +136,15 @@ class Trainer(pl.LightningModule):
     def automatic_optimization(self):
         return False
 
+    def train(self, mode: bool = True):
+        if not isinstance(mode, bool):
+            raise ValueError("training mode is expected to be boolean")
+        self.training = mode
+        for name, module in self.named_children():
+            if name != 'wav2vec2' and name != 'vocoder':
+                module.train(mode)
+        return self
+
     def common_step(self, batch, batch_idx):
         loss = {}
         logs = {}
@@ -161,7 +170,9 @@ class Trainer(pl.LightningModule):
             logs['ps'] = logs['ps'][:, 19:69]
 
         result = self.networks['Synthesis'](logs['lps'], logs['s_pos'], logs['e'], logs['ps'])
-        result['audio_gen'] = self.vocoder(result['gen_mel'])
+        if self.global_step % self.conf.logging.freq == 0:
+            with torch.no_grad():
+                result['audio_gen'] = self.vocoder(result['gen_mel'])
         logs.update(result)
 
         loss['mel'] = F.l1_loss(logs['gen_mel'], logs['gt_mel_22k'])
