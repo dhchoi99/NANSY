@@ -160,8 +160,8 @@ class Analysis(torch.nn.Module):
         super(Analysis, self).__init__()
         self.conf = conf
 
-        # self.linguistic = Linguistic()
-        self.speaker = ECAPA_TDNN(c_in=1024, c_mid=512, c_out=192)
+        self.linguistic = Linguistic()
+        self.speaker = Speaker()
         self.energy = Energy()
         self.pitch = Pitch()
 

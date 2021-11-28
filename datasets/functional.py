@@ -247,7 +247,7 @@ def peaking_coeffs(dBgain, cutoff_freq, sample_rate, Q):
     return b0, b1, b2, a0, a1, a2
 
 
-def apply_iir_filter(wav: torch.Tensor, ftype, dBgain, cutoff_freq, sample_rate, Q, torch_backend=False):
+def apply_iir_filter(wav: torch.Tensor, ftype, dBgain, cutoff_freq, sample_rate, Q, torch_backend=True):
     if ftype == 'low':
         b0, b1, b2, a0, a1, a2 = lowShelf_coeffs(dBgain, cutoff_freq, sample_rate, Q)
     elif ftype == 'high':
@@ -300,7 +300,7 @@ def f(wav: torch.Tensor, sr: int) -> torch.Tensor:
     sound = wav_to_Sound(wav_numpy, sampling_frequency=sr)
     sound = formant_shift(sound)
     wav_numpy = sound.values
-    wav = torch.from_numpy(wav_numpy).float()
+    # wav = torch.from_numpy(wav_numpy).float()
 
     n_steps = random.uniform(-12, 12)
     wav_numpy = librosa.effects.pitch_shift(

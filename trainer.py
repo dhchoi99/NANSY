@@ -26,16 +26,16 @@ class Trainer(pl.LightningModule):
 
         self.losses = self.build_losses()
 
-        self.load_wav2vec2()
-        self.load_vocoder()
+        # self.load_wav2vec2()
+        # self.load_vocoder()
 
     def load_wav2vec2(self):
         self.wav2vec2 = transformers.Wav2Vec2ForPreTraining.from_pretrained(
             "facebook/wav2vec2-large-xlsr-53")
-        for param in self.wav2vec2.parameters():
-            param.requires_grad = False
         self.wav2vec2.eval()
         self.wav2vec2 = self.wav2vec2.to(self.device)
+        for param in self.wav2vec2.parameters():
+            param.requires_grad = False
 
     def load_vocoder(self):
         path_config = './configs/hifi-gan/config.json'
@@ -64,7 +64,6 @@ class Trainer(pl.LightningModule):
         self.vocoder.load_state_dict(state_dict_g['generator'])
         self.vocoder.eval()
         self.vocoder = self.vocoder.to(self.device)
-
         for param in self.vocoder.parameters():
             param.requires_grad = False
 
@@ -150,19 +149,20 @@ class Trainer(pl.LightningModule):
         logs = {}
         logs.update(batch)
 
-        with torch.no_grad():
-            wav2vec2_output = self.wav2vec2(batch['gt_audio_f'], output_hidden_states=True)
-            logs['lps'] = wav2vec2_output.hidden_states[1].permute((0, 2, 1))  # B x C x t
+        logs['lps'] = self.networks['Analysis'].linguistic(batch['gt_audio_f'])
+        # with torch.no_grad():
+            # wav2vec2_output = self.wav2vec(batch['gt_audio_f'], output_hidden_states=True)
+            # logs['lps'] = wav2vec2_output.hidden_states[1].permute((0, 2, 1))  # B x C x t
 
-            wav2vec2_output = self.wav2vec2(batch['gt_audio_16k'], output_hidden_states=True)
-            s_pos_pre = wav2vec2_output.hidden_states[12].permute((0, 2, 1))  # B x C x t
-            wav2vec2_output = self.wav2vec2(batch['gt_audio_16k_negative'], output_hidden_states=True)
-            s_neg_pre = wav2vec2_output.hidden_states[12].permute((0, 2, 1))  # B x C x t
+            # wav2vec2_output = self.wav2vec2(batch['gt_audio_16k'], output_hidden_states=True)
+            # s_pos_pre = wav2vec2_output.hidden_states[12].permute((0, 2, 1))  # B x C x t
+            # wav2vec2_output = self.wav2vec2(batch['gt_audio_16k_negative'], output_hidden_states=True)
+            # s_neg_pre = wav2vec2_output.hidden_states[12].permute((0, 2, 1))  # B x C x t
 
-        # logs['s_pos'] = self.networks['Analysis'].speaker(batch['gt_audio_16k'])
-        # logs['s_neg'] = self.networks['Analysis'].speaker(batch['gt_audio_16k_negative'])
-        logs['s_pos'] = self.networks['Analysis'].speaker(s_pos_pre)
-        logs['s_neg'] = self.networks['Analysis'].speaker(s_neg_pre)
+        logs['s_pos'] = self.networks['Analysis'].speaker(batch['gt_audio_16k'])
+        logs['s_neg'] = self.networks['Analysis'].speaker(batch['gt_audio_16k_negative'])
+        # logs['s_pos'] = self.networks['Analysis'].speaker(s_pos_pre)
+        # logs['s_neg'] = self.networks['Analysis'].speaker(s_neg_pre)
 
         with torch.no_grad():
             logs['e'] = self.networks['Analysis'].energy(batch['gt_mel_22k'])
@@ -170,9 +170,6 @@ class Trainer(pl.LightningModule):
             logs['ps'] = logs['ps'][:, 19:69]
 
         result = self.networks['Synthesis'](logs['lps'], logs['s_pos'], logs['e'], logs['ps'])
-        if self.global_step % self.conf.logging.freq == 0:
-            with torch.no_grad():
-                result['audio_gen'] = self.vocoder(result['gen_mel'])
         logs.update(result)
 
         loss['mel'] = F.l1_loss(logs['gen_mel'], logs['gt_mel_22k'])

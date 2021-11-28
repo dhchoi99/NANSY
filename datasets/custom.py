@@ -36,6 +36,8 @@ class CustomDataset(BaseDataset):
 
         self.praat_voice_time = 0.2
 
+        self.mel_safety_index = 40  # index to give segment enough voice values
+
     def __len__(self):
         return len(self.data)
 
@@ -121,7 +123,7 @@ class CustomDataset(BaseDataset):
 
         mel_22k = self.load_mel(wav_22k_path, sr=22050)
 
-        mel_start = random.randint(0, mel_22k.shape[-1] - 1)  # 30 for safety index
+        mel_start = random.randint(0, mel_22k.shape[-1] - self.mel_safety_index)
         mel_end = mel_start + self.mel_len
         gt_mel_22k = self.crop_audio(mel_22k, mel_start, mel_end, padding_value=-4)
         return_data['gt_mel_22k'] = gt_mel_22k
@@ -140,8 +142,9 @@ class CustomDataset(BaseDataset):
         wav_22k_yin = self.crop_audio(wav_22k_torch, w_start_22k, w_end_22k_yin)
 
         mel_start_negative = mel_start  # TODO for ablation: if diff(t_start, t_negative) > threshold
-        while mel_start_negative == mel_start:
-            mel_start_negative = random.randint(0, mel_22k.shape[-1] - 1)
+        threshold = 10  # at least 0.12 sec difference
+        while abs(mel_start_negative - mel_start) < threshold:
+            mel_start_negative = random.randint(0, mel_22k.shape[-1] - self.mel_safety_index)
 
         t_negative = mel_start_negative * self.conf.audio.hop_size / 22050.
         w_start_16k_negative = int(t_negative * 16000)

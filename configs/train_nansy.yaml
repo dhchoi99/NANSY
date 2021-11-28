@@ -18,7 +18,7 @@ pl:
 
 logging:
   log_dir: /raid/vision/dhchoi/log/nansy/
-  seed: "21"
+  seed: "24"
   freq: 100
   device: cuda
   nepochs: 1000
@@ -38,6 +38,16 @@ datasets:
     datasets: [
         'configs/datasets/vctk.yaml',
         'configs/datasets/libritts360.yaml',
+#        'configs/datasets/css10_chinese.yaml',
+#        'configs/datasets/css10_dutch.yaml',
+#        'configs/datasets/css10_finnish.yaml',
+#        'configs/datasets/css10_french.yaml',
+#        'configs/datasets/css10_german.yaml',
+#        'configs/datasets/css10_greek.yaml',
+#        'configs/datasets/css10_hungarian.yaml',
+#        'configs/datasets/css10_japanese.yaml',
+#        'configs/datasets/css10_russian.yaml',
+#        'configs/datasets/css10_spanish.yaml',
     ]
 
     mode: train
@@ -50,6 +60,16 @@ datasets:
     datasets: [
         'configs/datasets/vctk.yaml',
         'configs/datasets/libritts360.yaml',
+#        'configs/datasets/css10_chinese.yaml',
+#        'configs/datasets/css10_dutch.yaml',
+#        'configs/datasets/css10_finnish.yaml',
+#        'configs/datasets/css10_french.yaml',
+#        'configs/datasets/css10_german.yaml',
+#        'configs/datasets/css10_greek.yaml',
+#        'configs/datasets/css10_hungarian.yaml',
+#        'configs/datasets/css10_japanese.yaml',
+#        'configs/datasets/css10_russian.yaml',
+#        'configs/datasets/css10_spanish.yaml',
     ]
 
     mode: eval
