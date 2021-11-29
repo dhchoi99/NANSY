@@ -18,7 +18,7 @@ symmetric_mels: True
 
 max_abs_value: 4.0
 
-preemphasize: True
+preemphasize: False
 preemphasis: 0.97
 
 min_level_db: -100

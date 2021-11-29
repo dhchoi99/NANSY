@@ -27,6 +27,7 @@ class LibriTTSDataset(CustomDataset):
                 'wav_path_22k': wav_path_22k,
                 'wav_path_16k': None,  # TODO
                 'text': txt,
+                'speaker_id': speaker_id,
             }
             data_list.append(data)
 

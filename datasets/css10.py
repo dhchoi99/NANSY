@@ -19,11 +19,13 @@ class CSS10Dataset(CustomDataset):
         data_list = []
         for line in file_lists:
             wav_path, original_script, normalized_script, audio_duration = line.strip().split('|')
+            speaker_id = wav_path.split('/')[0]
             wav_path_22k = os.path.join(self.conf.path.root, wav_path)
             data = {
                 'wav_path_22k': wav_path_22k,
                 'wav_path_16k': None,  # TODO
                 'text': normalized_script,
+                'speaker_id': speaker_id,
             }
             data_list.append(data)
 

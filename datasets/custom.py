@@ -104,8 +104,27 @@ class CustomDataset(BaseDataset):
         assert y.shape[-1] == end - start, f'{x.shape}, {start}, {end}, {y.shape}'
         return y
 
+    def get_wav_22k(self, wav_22k_path):
+        wav_22k_numpy, wav_22k_torch = self.load_wav(wav_22k_path, 22050)
+        return wav_22k_numpy, wav_22k_torch
+
+    def get_wav_16k(self, wav_16k_path, wav_22k_path=None, wav_22k_torch=None):
+        if wav_16k_path is not None and os.path.isfile(wav_16k_path):
+            wav_16k_numpy, wav_16k_torch = self.load_wav(wav_16k_path, 16000)
+        else:
+            # wav_16k_torch = AF.resample(wav_22k_torch, 22050, 16000)
+            wav_16k_torch = torchaudio.transforms.Resample(22050, 16000).forward(wav_22k_torch)
+            wav_16k_numpy = wav_16k_torch.numpy()
+        return wav_16k_numpy, wav_16k_torch
+
     def getitem(self, idx):
         data = self.data[idx]
+
+        negative_idx = random.randint(0, len(self) - 1)
+        negative_data = self.data[negative_idx]
+        while negative_data['speaker_id'] == data['speaker_id']:
+            negative_idx = random.randint(0, len(self) - 1)
+            negative_data = self.data[negative_idx]
 
         return_data = {}
         # return_data.update(data)
@@ -115,13 +134,8 @@ class CustomDataset(BaseDataset):
         wav_22k_path = data['wav_path_22k']
         wav_16k_path = data['wav_path_16k']
 
-        wav_22k_numpy, wav_22k_torch = self.load_wav(wav_22k_path, 22050)
-        if wav_16k_path is not None and os.path.isfile(wav_16k_path):
-            wav_16k_numpy, wav_16k_torch = self.load_wav(wav_16k_path, 16000)
-        else:
-            # wav_16k_torch = AF.resample(wav_22k_torch, 22050, 16000)
-            wav_16k_torch = torchaudio.transforms.Resample(22050, 16000).forward(wav_22k_torch)
-            wav_16k_numpy = wav_16k_torch.numpy()
+        wav_22k_numpy, wav_22k_torch = self.get_wav_22k(wav_22k_path)
+        wav_16k_numpy, wav_16k_torch = self.get_wav_16k(wav_16k_path, wav_22k_path, wav_22k_torch)
 
         mel_22k = self.load_mel(wav_22k_path, sr=22050)
 
@@ -143,17 +157,18 @@ class CustomDataset(BaseDataset):
         wav_16k = self.crop_audio(wav_16k_torch, w_start_16k, w_end_16k)
         wav_22k_yin = self.crop_audio(wav_22k_torch, w_start_22k, w_end_22k_yin)
 
-        mel_start_negative = mel_start  # TODO for ablation: if diff(t_start, t_negative) > threshold
-        threshold = 10  # at least 0.12 sec difference
-        while abs(mel_start_negative - mel_start) < threshold:
-            mel_start_negative = random.randint(0, mel_22k.shape[-1] - self.mel_safety_index)
+        negative_mel_22k = self.load_mel(negative_data['wav_path_22k'])
+        _, negative_audio_22k = self.get_wav_22k(negative_data['wav_path_22k'])
+        _, negative_audio_16k = self.get_wav_16k(negative_data['wav_path_16k'], negative_data['wav_path_22k'],
+                                                 negative_audio_22k)
+        mel_start_negative = random.randint(0, negative_mel_22k.shape[-1] - self.mel_safety_index)
 
         t_negative = mel_start_negative * self.conf.audio.hop_size / 22050.
         w_start_16k_negative = int(t_negative * 16000)
         w_end_16k_negative = w_start_16k_negative + self.window_size_16k
-        assert w_start_16k_negative <= wav_16k_torch.shape[-1], "16k_nega!!!!!!!!!!!!!!"
+        assert w_start_16k_negative <= negative_audio_16k.shape[-1], "16k_nega!!!!!!!!!!!!!!"
 
-        wav_16k_negative = self.crop_audio(wav_16k_torch, w_start_16k_negative, w_end_16k_negative)
+        wav_16k_negative = self.crop_audio(negative_audio_16k, w_start_16k_negative, w_end_16k_negative)
 
         return_data['gt_audio_f'] = f(wav_16k, sr=16000)
         return_data['gt_audio_16k'] = wav_16k
