@@ -4,6 +4,7 @@ import random
 import numpy as np
 import librosa
 import torch
+import torchaudio
 import torchaudio.functional as AF
 
 from datasets.base import BaseDataset
@@ -118,7 +119,8 @@ class CustomDataset(BaseDataset):
         if wav_16k_path is not None and os.path.isfile(wav_16k_path):
             wav_16k_numpy, wav_16k_torch = self.load_wav(wav_16k_path, 16000)
         else:
-            wav_16k_torch = AF.resample(wav_22k_torch, 22050, 16000)
+            # wav_16k_torch = AF.resample(wav_22k_torch, 22050, 16000)
+            wav_16k_torch = torchaudio.transforms.Resample(22050, 16000).forward(wav_22k_torch)
             wav_16k_numpy = wav_16k_torch.numpy()
 
         mel_22k = self.load_mel(wav_22k_path, sr=22050)

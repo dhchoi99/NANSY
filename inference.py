@@ -58,7 +58,7 @@ def main():
         'gen_source_tsa': [],
         'gen_target_tsa': [],
     }
-    for idx in [150]:
+    for idx in range(0, mel_22k.length + d.datasets['0'].mel_len, d.datasets['0'].mel_len):
         mel_start = idx
         mel_end = mel_start + self.mel_len
         gt_mel_22k = self.crop_audio(mel_22k, mel_start, mel_end, -4)
