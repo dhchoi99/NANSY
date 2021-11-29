@@ -1,0 +1,31 @@
+FROM nvcr.io/nvidia/pytorch:20.03-py3
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    tmux wget sudo git tar htop rsync
+
+RUN python -m pip --no-cache-dir install --upgrade pip setuptools && \
+    python -m pip --no-cache-dir install \
+    torch==1.8.2+cu102 \
+    torchvision==0.9.2+cu102 \
+    torchaudio==0.8.2 \
+    -f https://download.pytorch.org/whl/lts/1.8/torch_lts.html && \
+    python -m pip --no-cache-dir install --upgrade \
+    praat-parselmouth \
+    transformers==4.12.4 \
+    omegaconf \
+    pytorch_lightning \
+    tqdm \
+    tensorboard && \
+    python -m pip uninstall -y \
+    torchtext tensorboard-plugin-dlprof
+
+COPY . /root/NANSY
+
+WORKDIR /root/NANSY
+
+# cleanup
+RUN ldconfig && \
+    apt-get clean && \
+    apt-get autoremove && \
+    rm -rf /var/lib/apt/lists/* /tmp/* /workspace/*

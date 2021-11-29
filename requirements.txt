@@ -1,0 +1,9 @@
+torch
+torchvision
+torchaudio
+praat-parselmouth
+transformers
+omegaconf
+pytorch_lightning
+tqdm
+tensorboard
