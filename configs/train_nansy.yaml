@@ -18,7 +18,7 @@ pl:
 
 logging:
   log_dir: /raid/vision/dhchoi/log/nansy/
-  seed: "27"
+  seed: "28"
   freq: 100
   device: cuda
   nepochs: 1000

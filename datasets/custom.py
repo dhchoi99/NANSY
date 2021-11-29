@@ -10,6 +10,7 @@ import torchaudio.functional as AF
 from datasets.base import BaseDataset
 from datasets.functional import f, g
 import utils.audio
+import utils.mel
 
 
 class CustomDataset(BaseDataset):
@@ -56,7 +57,7 @@ class CustomDataset(BaseDataset):
             wav_torch = torch.from_numpy(wav_numpy).float()
         return wav_numpy, wav_torch
 
-    def load_mel(self, wav_path, sr=None):
+    def load_mel_0(self, wav_path, sr=None):
         mel_path = wav_path + '.dhc.mel'
         try:
             mel = torch.load(mel_path, map_location='cpu')
@@ -69,6 +70,27 @@ class CustomDataset(BaseDataset):
             torch.save(mel, mel_path)
 
         return mel
+
+    def load_mel(self, wav_path, sr=None):
+        mel_path = wav_path + '.kwkim.mel'
+        try:
+            mel = torch.load(mel_path, map_location='cpu')
+        except Exception as e:
+            # print('load_mel', e)
+            _, wav_torch = self.load_wav(wav_path, sr=sr)
+            mel = utils.mel.mel_spectrogram(
+                wav_torch.unsqueeze(0),
+                self.conf.audio.n_fft,
+                self.conf.audio.num_mels,
+                self.conf.audio.sample_rate,
+                self.conf.audio.hop_size,
+                self.conf.audio.win_size,
+                self.conf.audio.fmin,
+                self.conf.audio.fmax
+            )[0] # 1 x C x T -> C x T
+            torch.save(mel, mel_path)
+        return mel
+
 
     @staticmethod
     def pad_audio(x: torch.Tensor, length: int, value=0., pad_at='end'):
@@ -128,7 +150,10 @@ class CustomDataset(BaseDataset):
         return wav_22k_torch, wav_16k_torch, mel_22k
 
     def get_time_idxs(self, mel_length):
-        mel_start = random.randint(0, mel_length - self.mel_safety_index)
+        if mel_length < self.mel_len:
+            mel_start = 0
+        else:
+            mel_start = random.randint(0, mel_length - self.mel_len)
         mel_end = mel_start + self.mel_len
 
         t_start = mel_start * self.conf.audio.hop_size / 22050.
