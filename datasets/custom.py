@@ -117,20 +117,7 @@ class CustomDataset(BaseDataset):
             wav_16k_numpy = wav_16k_torch.numpy()
         return wav_16k_numpy, wav_16k_torch
 
-    def getitem(self, idx):
-        data = self.data[idx]
-
-        negative_idx = random.randint(0, len(self) - 1)
-        negative_data = self.data[negative_idx]
-        while negative_data['speaker_id'] == data['speaker_id']:
-            negative_idx = random.randint(0, len(self) - 1)
-            negative_data = self.data[negative_idx]
-
-        return_data = {}
-        # return_data.update(data)
-        return_data['wav_path_22k'] = data['wav_path_22k']
-        return_data['text'] = data['text']
-
+    def get_items_from_data(self, data):
         wav_22k_path = data['wav_path_22k']
         wav_16k_path = data['wav_path_16k']
 
@@ -138,11 +125,11 @@ class CustomDataset(BaseDataset):
         wav_16k_numpy, wav_16k_torch = self.get_wav_16k(wav_16k_path, wav_22k_path, wav_22k_torch)
 
         mel_22k = self.load_mel(wav_22k_path, sr=22050)
+        return wav_22k_torch, wav_16k_torch, mel_22k
 
-        mel_start = random.randint(0, mel_22k.shape[-1] - self.mel_safety_index)
+    def get_time_idxs(self, mel_length):
+        mel_start = random.randint(0, mel_length - self.mel_safety_index)
         mel_end = mel_start + self.mel_len
-        gt_mel_22k = self.crop_audio(mel_22k, mel_start, mel_end, padding_value=-4)
-        return_data['gt_mel_22k'] = gt_mel_22k
 
         t_start = mel_start * self.conf.audio.hop_size / 22050.
         w_start_22k = int(t_start * 22050)
@@ -150,34 +137,58 @@ class CustomDataset(BaseDataset):
         w_end_22k = w_start_22k + self.window_size
         w_end_22k_yin = w_start_22k + self.yin_window_size
         w_end_16k = w_start_16k + self.window_size_16k
-        assert w_start_22k <= wav_22k_torch.shape[-1], '22k_1'
-        assert w_start_16k <= wav_16k_torch.shape[-1], '16k_1'
 
-        wav_22k = self.crop_audio(wav_22k_torch, w_start_22k, w_end_22k)
-        wav_16k = self.crop_audio(wav_16k_torch, w_start_16k, w_end_16k)
-        wav_22k_yin = self.crop_audio(wav_22k_torch, w_start_22k, w_end_22k_yin)
+        return mel_start, mel_end, t_start, w_start_16k, w_start_22k, w_end_16k, w_end_22k, w_end_22k_yin
 
-        negative_mel_22k = self.load_mel(negative_data['wav_path_22k'])
-        _, negative_audio_22k = self.get_wav_22k(negative_data['wav_path_22k'])
-        _, negative_audio_16k = self.get_wav_16k(negative_data['wav_path_16k'], negative_data['wav_path_22k'],
-                                                 negative_audio_22k)
-        mel_start_negative = random.randint(0, negative_mel_22k.shape[-1] - self.mel_safety_index)
+    def get_pos_sample(self, data):
+        return_data = {}
+        return_data['wav_path_22k'] = data['wav_path_22k']
+        return_data['text'] = data['text']
 
-        t_negative = mel_start_negative * self.conf.audio.hop_size / 22050.
-        w_start_16k_negative = int(t_negative * 16000)
-        w_end_16k_negative = w_start_16k_negative + self.window_size_16k
-        assert w_start_16k_negative <= negative_audio_16k.shape[-1], "16k_nega!!!!!!!!!!!!!!"
+        wav_22k_torch, wav_16k_torch, pos_mel_22k = self.get_items_from_data(data)
+        pos_time_idxs = self.get_time_idxs(pos_mel_22k.shape[-1])
 
-        wav_16k_negative = self.crop_audio(negative_audio_16k, w_start_16k_negative, w_end_16k_negative)
+        pos_mel_22k = self.crop_audio(pos_mel_22k, pos_time_idxs[0], pos_time_idxs[1], padding_value=-4)
+        return_data['gt_mel_22k'] = pos_mel_22k
 
+        assert pos_time_idxs[3] <= wav_16k_torch.shape[-1], '16k_1'
+        wav_16k = self.crop_audio(wav_16k_torch, pos_time_idxs[3], pos_time_idxs[5])
         return_data['gt_audio_f'] = f(wav_16k, sr=16000)
         return_data['gt_audio_16k'] = wav_16k
 
-        return_data['gt_audio_16k_negative'] = wav_16k_negative
-
+        assert pos_time_idxs[4] <= wav_22k_torch.shape[-1], '22k_1'
+        wav_22k = self.crop_audio(wav_22k_torch, pos_time_idxs[4], pos_time_idxs[6])
+        wav_22k_yin = self.crop_audio(wav_22k_torch, pos_time_idxs[4], pos_time_idxs[7])
         return_data['gt_audio_22k'] = wav_22k
         return_data['gt_audio_g'] = g(wav_22k_yin, sr=22050)
 
-        return_data['t'] = t_start
+        return return_data
+
+    def get_neg_sample(self, neg_data):
+        return_data = {}
+
+        negative_audio_22k, negative_audio_16k, negative_mel_22k = self.get_items_from_data(neg_data)
+        negative_time_idxs = self.get_time_idxs(negative_mel_22k.shape[-1])
+
+        assert negative_time_idxs[3] <= negative_audio_16k.shape[-1], "16k_nega"
+        wav_16k_negative = self.crop_audio(negative_audio_16k, negative_time_idxs[3], negative_time_idxs[5])
+
+        return_data['gt_audio_16k_negative'] = wav_16k_negative
+        return return_data
+
+    def getitem(self, pos_idx):
+        pos_data = self.data[pos_idx]
+
+        neg_idx = random.randint(0, len(self) - 1)
+        neg_data = self.data[neg_idx]
+        while neg_data['speaker_id'] == pos_data['speaker_id']:
+            neg_idx = random.randint(0, len(self) - 1)
+            neg_data = self.data[neg_idx]
+
+        return_data = {}
+        pos_data = self.get_pos_sample(pos_data)
+        neg_data = self.get_neg_sample(neg_data)
+        return_data.update(pos_data)
+        return_data.update(neg_data)
 
         return return_data
