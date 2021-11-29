@@ -151,13 +151,13 @@ class Trainer(pl.LightningModule):
 
         logs['lps'] = self.networks['Analysis'].linguistic(batch['gt_audio_f'])
         # with torch.no_grad():
-            # wav2vec2_output = self.wav2vec(batch['gt_audio_f'], output_hidden_states=True)
-            # logs['lps'] = wav2vec2_output.hidden_states[1].permute((0, 2, 1))  # B x C x t
+        # wav2vec2_output = self.wav2vec(batch['gt_audio_f'], output_hidden_states=True)
+        # logs['lps'] = wav2vec2_output.hidden_states[1].permute((0, 2, 1))  # B x C x t
 
-            # wav2vec2_output = self.wav2vec2(batch['gt_audio_16k'], output_hidden_states=True)
-            # s_pos_pre = wav2vec2_output.hidden_states[12].permute((0, 2, 1))  # B x C x t
-            # wav2vec2_output = self.wav2vec2(batch['gt_audio_16k_negative'], output_hidden_states=True)
-            # s_neg_pre = wav2vec2_output.hidden_states[12].permute((0, 2, 1))  # B x C x t
+        # wav2vec2_output = self.wav2vec2(batch['gt_audio_16k'], output_hidden_states=True)
+        # s_pos_pre = wav2vec2_output.hidden_states[12].permute((0, 2, 1))  # B x C x t
+        # wav2vec2_output = self.wav2vec2(batch['gt_audio_16k_negative'], output_hidden_states=True)
+        # s_neg_pre = wav2vec2_output.hidden_states[12].permute((0, 2, 1))  # B x C x t
 
         logs['s_pos'] = self.networks['Analysis'].speaker(batch['gt_audio_16k'])
         logs['s_neg'] = self.networks['Analysis'].speaker(batch['gt_audio_16k_negative'])
@@ -178,7 +178,8 @@ class Trainer(pl.LightningModule):
         # for G
         if 'Discriminator' in self.networks.keys():
             pred_gen = self.networks['Discriminator'](logs['gen_mel'], logs['s_pos'], logs['s_neg'])
-            loss['D_gen_forG'] = self.losses['BCE'](pred_gen, torch.ones_like(pred_gen))
+            # loss['D_gen_forG'] = self.losses['BCE'](pred_gen, torch.ones_like(pred_gen))
+            loss['D_gen_forG'] = torch.nn.functional.sigmoid(pred_gen)
             loss['backward'] = loss['backward'] + loss['D_gen_forG']
 
         # for D
@@ -188,10 +189,12 @@ class Trainer(pl.LightningModule):
             logs['s_neg'] = logs['s_neg'].detach()
             pred_gen = self.networks['Discriminator'](logs['gen_mel'], logs['s_pos'], logs['s_neg'])
             pred_gt = self.networks['Discriminator'](logs['gt_mel_22k'], logs['s_pos'], logs['s_neg'])
-            loss['D_gen_forD'] = self.losses['BCE'](pred_gen, torch.zeros_like(pred_gen))
+            # loss['D_gen_forD'] = self.losses['BCE'](pred_gen, torch.zeros_like(pred_gen))
+            loss['D_gen_forD'] = -torch.nn.functional.sigmoid(pred_gen)
             # if not torch.isfinite(loss['D_gen_forD']):
             #     raise AssertionError('D_gen_forD')
-            loss['D_gt_forD'] = self.losses['BCE'](pred_gt, torch.ones_like(pred_gt))
+            # loss['D_gt_forD'] = self.losses['BCE'](pred_gt, torch.ones_like(pred_gt))
+            loss['D_gt_forD'] = torch.nn.functional.sigmoid(pred_gt)
             # if not torch.isfinite(loss['D_gt_forD']):
             #     raise AssertionError('D_gt_forD')
             loss['D_backward'] = loss['D_gt_forD'] + loss['D_gen_forD']

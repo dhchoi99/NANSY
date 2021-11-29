@@ -36,7 +36,7 @@ class CustomDataset(BaseDataset):
 
         self.praat_voice_time = 0.2
 
-        self.mel_safety_index = 40  # index to give segment enough voice values
+        self.mel_safety_index = 1  # index to give segment enough voice values
 
     def __len__(self):
         return len(self.data)
