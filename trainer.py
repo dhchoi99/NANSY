@@ -190,14 +190,10 @@ class Trainer(pl.LightningModule):
             pred_gen = self.networks['Discriminator'](logs['gen_mel'], logs['s_pos'], logs['s_neg'])
             pred_gt = self.networks['Discriminator'](logs['gt_mel_22k'], logs['s_pos'], logs['s_neg'])
             # loss['D_gen_forD'] = self.losses['BCE'](pred_gen, torch.zeros_like(pred_gen))
-            loss['D_gen_forD'] = -torch.mean(torch.sigmoid(pred_gen))
-            # if not torch.isfinite(loss['D_gen_forD']):
-            #     raise AssertionError('D_gen_forD')
+            loss['D_gen_forD'] = torch.mean(torch.sigmoid(pred_gen))
             # loss['D_gt_forD'] = self.losses['BCE'](pred_gt, torch.ones_like(pred_gt))
             loss['D_gt_forD'] = torch.mean(torch.sigmoid(pred_gt))
-            # if not torch.isfinite(loss['D_gt_forD']):
-            #     raise AssertionError('D_gt_forD')
-            loss['D_backward'] = loss['D_gt_forD'] + loss['D_gen_forD']
+            loss['D_backward'] = loss['D_gt_forD'] - loss['D_gen_forD']
 
         return loss, logs
 
@@ -282,32 +278,3 @@ class Trainer(pl.LightningModule):
         data = data.reshape(fig.canvas.get_width_height()[::-1] + (3,))
         plt.close()
         return data
-
-    def test_time_self_adaptation(self, batch, batch_idx):
-        loss = {}
-        logs = {}
-        logs.update(batch)
-
-        logs['lps'] = self.networks['Analysis'].linguistic(batch['gt_audio_f'])
-        logs['s_pos'] = self.networks['Analysis'].speaker(batch['gt_audio_16k'])
-        logs['s_neg'] = self.networks['Analysis'].speaker(batch['gt_audio_16k_negative'])
-        logs['e'] = self.networks['Analysis'].energy(batch['gt_mel_22k'])
-        logs['ps'] = self.networks['Analysis'].pitch.yingram_batch(batch['gt_audio_g'])
-        logs['ps'] = logs['ps'][:, 19:69]
-
-        result = self.networks['Synthesis'](logs['lps'], logs['s_pos'], logs['e'], logs['ps'])
-        logs.update(result)
-
-        loss['mel'] = F.l1_loss(logs['gen_mel'], logs['gt_mel_22k'])
-        loss['backward'] = loss['mel']
-
-        opt = torch.optim.Adam(logs['lps'], lr=1e-4, betas=(0.5, 0.9))
-        opt.zero_grad()
-        loss['mel'].backward()
-        opt.step()
-
-        with torch.no_grad():
-            logs['mel_filter'] = self.networks['Synthesis'](logs['lps'], logs['e'], logs['s_pos'])
-            logs['gen_mel'] = logs['mel_filter'] + logs['mel_source']
-            logs['audio_gen'] = self.networks['Synthesis'].vocoder(logs['gen_mel'])
-        return loss, logs
