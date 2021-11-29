@@ -236,11 +236,12 @@ class Discriminator(nn.Module):
         speaker_embedding.shape: B x d
         """
         pred1 = self.psi(self.phi(mel))
-        pred2 = torch.bmm(positive.unsqueeze(1), self.res(self.phi(mel)))
-        pred3 = torch.bmm(negative.unsqueeze(1), self.res(self.phi(mel)))
+        pred = self.res(self.phi(mel))
+        pred2 = torch.bmm(positive.unsqueeze(1), pred)
+        pred3 = torch.bmm(negative.unsqueeze(1), pred)
         result = pred1 + pred2 - pred3
         result = result.squeeze(1)
-        result = torch.mean(result, dim=-1)
+        # result = torch.mean(result, dim=-1)
         return result
 
 

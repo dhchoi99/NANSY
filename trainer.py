@@ -179,7 +179,7 @@ class Trainer(pl.LightningModule):
         if 'Discriminator' in self.networks.keys():
             pred_gen = self.networks['Discriminator'](logs['gen_mel'], logs['s_pos'], logs['s_neg'])
             # loss['D_gen_forG'] = self.losses['BCE'](pred_gen, torch.ones_like(pred_gen))
-            loss['D_gen_forG'] = torch.nn.functional.sigmoid(pred_gen)
+            loss['D_gen_forG'] = torch.mean(torch.sigmoid(pred_gen))
             loss['backward'] = loss['backward'] + loss['D_gen_forG']
 
         # for D
@@ -190,11 +190,11 @@ class Trainer(pl.LightningModule):
             pred_gen = self.networks['Discriminator'](logs['gen_mel'], logs['s_pos'], logs['s_neg'])
             pred_gt = self.networks['Discriminator'](logs['gt_mel_22k'], logs['s_pos'], logs['s_neg'])
             # loss['D_gen_forD'] = self.losses['BCE'](pred_gen, torch.zeros_like(pred_gen))
-            loss['D_gen_forD'] = -torch.nn.functional.sigmoid(pred_gen)
+            loss['D_gen_forD'] = -torch.mean(torch.sigmoid(pred_gen))
             # if not torch.isfinite(loss['D_gen_forD']):
             #     raise AssertionError('D_gen_forD')
             # loss['D_gt_forD'] = self.losses['BCE'](pred_gt, torch.ones_like(pred_gt))
-            loss['D_gt_forD'] = torch.nn.functional.sigmoid(pred_gt)
+            loss['D_gt_forD'] = torch.mean(torch.sigmoid(pred_gt))
             # if not torch.isfinite(loss['D_gt_forD']):
             #     raise AssertionError('D_gt_forD')
             loss['D_backward'] = loss['D_gt_forD'] + loss['D_gen_forD']
