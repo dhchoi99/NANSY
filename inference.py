@@ -58,17 +58,17 @@ def main():
         'gen_source_tsa': [],
         'gen_target_tsa': [],
     }
-    for idx in range(0, mel_22k.length + d.datasets['0'].mel_len, d.datasets['0'].mel_len):
+    for idx in range(0, mel_22k.length + d.datasets['0'].mel_window, d.datasets['0'].mel_window):
         mel_start = idx
-        mel_end = mel_start + self.mel_len
+        mel_end = mel_start + self.mel_window
         gt_mel_22k = self.crop_audio(mel_22k, mel_start, mel_end, -4)
 
         t_start = mel_start * self.conf.audio.hop_size / 22050.
         w_start_22k = int(t_start * 22050)
         w_start_16k = int(t_start * 16000)
-        w_end_22k = w_start_22k + self.window_size
-        w_end_22k_yin = w_start_22k + self.yin_window_size
-        w_end_16k = w_start_16k + self.window_size_16k
+        w_end_22k = w_start_22k + self.audio_window_22k
+        w_end_22k_yin = w_start_22k + self.yin_window_22k
+        w_end_16k = w_start_16k + self.audio_window_16k
 
         source_22k = self.crop_audio(wav_22k_source, w_start_22k, w_end_22k)
         source_16k = self.crop_audio(wav_16k_source, w_start_16k, w_end_16k)

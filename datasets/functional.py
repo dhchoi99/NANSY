@@ -1,4 +1,3 @@
-# https://github.com/YannickJadoul/Parselmouth/issues/25#issuecomment-608632887
 import math
 import random
 
@@ -9,11 +8,23 @@ import scipy.signal
 import torch
 import torchaudio.functional as AF
 
+PRAAT_CHANGEGENDER_PITCHMEDIAN_DEFAULT = 0.0
+PRAAT_CHANGEGENDER_FORMANTSHIFTRATIO_DEFAULT = 1.0
+PRAAT_CHANGEGENDER_PITCHSHIFTRATIO_DEFAULT = 1.0
+PRAAT_CHANGEGENDER_PITCHRANGERATIO_DEFAULT = 1.0
+PRAAT_CHANGEGENDER_DURATIONFACTOR_DEFAULT = 1.0
 
-# __init__(self: parselmouth.Sound, other: parselmouth.Sound) -> None \
-# __init__(self: parselmouth.Sound, values: numpy.ndarray[numpy.float64], sampling_frequency: Positive[float] = 44100.0, start_time: float = 0.0) -> None \
-# __init__(self: parselmouth.Sound, file_path: str) -> None
-def wav_to_Sound(wav, sampling_frequency=22050):
+
+def wav_to_Sound(wav, sampling_frequency: int = 22050) -> parselmouth.Sound:
+    r""" load wav file to parselmouth Sound file
+
+    # __init__(self: parselmouth.Sound, other: parselmouth.Sound) -> None \
+    # __init__(self: parselmouth.Sound, values: numpy.ndarray[numpy.float64], sampling_frequency: Positive[float] = 44100.0, start_time: float = 0.0) -> None \
+    # __init__(self: parselmouth.Sound, file_path: str) -> None
+
+    returns:
+        sound: parselmouth.Sound
+    """
     if isinstance(wav, parselmouth.Sound):
         sound = wav
     elif isinstance(wav, np.ndarray):
@@ -26,7 +37,7 @@ def wav_to_Sound(wav, sampling_frequency=22050):
     return sound
 
 
-def wav_to_Tensor(wav):
+def wav_to_Tensor(wav) -> torch.Tensor:
     if isinstance(wav, np.ndarray):
         wav_tensor = torch.from_numpy(wav)
     elif isinstance(wav, torch.Tensor):
@@ -39,9 +50,21 @@ def wav_to_Tensor(wav):
     return wav_tensor
 
 
-def apply_formant_and_pitch_shift(sound: parselmouth.Sound, formant_shift_ratio=1., pitch_shift_ratio=1.,
-                                  pitch_range_ratio=1., duration_factor=1.):
+def apply_formant_and_pitch_shift(
+        sound: parselmouth.Sound,
+        formant_shift_ratio: float = PRAAT_CHANGEGENDER_FORMANTSHIFTRATIO_DEFAULT,
+        pitch_shift_ratio: float = PRAAT_CHANGEGENDER_PITCHSHIFTRATIO_DEFAULT,
+        pitch_range_ratio: float = PRAAT_CHANGEGENDER_PITCHRANGERATIO_DEFAULT,
+        duration_factor: float = PRAAT_CHANGEGENDER_DURATIONFACTOR_DEFAULT) -> parselmouth.Sound:
+    r"""uses praat 'Change Gender' backend to manipulate pitch and formant
+        'Change Gender' function: praat -> Sound Object -> Convert -> Change Gender
+        see Help of Praat for more details
+
+        # https://github.com/YannickJadoul/Parselmouth/issues/25#issuecomment-608632887 might help
+    """
+
     # pitch = sound.to_pitch()
+    new_pitch_median = PRAAT_CHANGEGENDER_PITCHMEDIAN_DEFAULT
     if pitch_shift_ratio != 1.:
         try:
             pitch = parselmouth.praat.call(sound, "To Pitch", 0, 75, 600)
@@ -49,35 +72,26 @@ def apply_formant_and_pitch_shift(sound: parselmouth.Sound, formant_shift_ratio=
             try:
                 pitch_median = parselmouth.praat.call(pitch, "Get quantile", 0.0, 0.0, 0.5, "Hertz")
                 if not math.isnan(pitch_median):
-                    # print('not nan')
                     new_pitch_median = pitch_median * pitch_shift_ratio
                     if math.isnan(new_pitch_median):
-                        new_pitch_median = 0.0
+                        new_pitch_median = PRAAT_CHANGEGENDER_PITCHMEDIAN_DEFAULT
                 else:
-                    # print('nan')
-                    new_pitch_median = 0.0
+                    new_pitch_median = PRAAT_CHANGEGENDER_PITCHMEDIAN_DEFAULT
             except:
-                print('e2')
-                new_pitch_median = 0.0
+                new_pitch_median = PRAAT_CHANGEGENDER_PITCHMEDIAN_DEFAULT
         except:
-            print('e1')
-            new_pitch_median = 0.0
+            new_pitch_median = PRAAT_CHANGEGENDER_PITCHMEDIAN_DEFAULT
 
+    try:
+        new_sound = parselmouth.praat.call(
+            sound, "Change gender", 75, 600,
+            formant_shift_ratio,
+            new_pitch_median,
+            pitch_range_ratio,
+            duration_factor
+        )
+    except Exception as e:
         try:
-            new_sound = parselmouth.praat.call(
-                sound, "Change gender", 75, 600,
-                formant_shift_ratio,
-                new_pitch_median,
-                pitch_range_ratio,
-                duration_factor
-            )
-        except Exception as e:
-            print('e3')
-            print(e)
-            print(formant_shift_ratio)
-            print(new_pitch_median)
-            print(pitch_range_ratio)
-            print(duration_factor)
             new_sound = parselmouth.praat.call(
                 sound, "Change gender", 75, 600,
                 formant_shift_ratio,
@@ -85,19 +99,17 @@ def apply_formant_and_pitch_shift(sound: parselmouth.Sound, formant_shift_ratio=
                 pitch_range_ratio,
                 duration_factor
             )
-    else:
-        new_sound = parselmouth.praat.call(
-            sound, "Change gender", 75, 600,
-            formant_shift_ratio,
-            0.0,
-            pitch_range_ratio,
-            duration_factor
-        )
+        except:
+            new_sound = sound
     return new_sound
 
 
 # fs & pr
-def formant_and_pitch_shift(sound):
+def formant_and_pitch_shift(sound: parselmouth.Sound) -> parselmouth.Sound:
+    r"""calculate random factors and apply formant and pitch shift
+
+    designed for formant shifting(fs) and pitch randomization(pr) in the paper
+    """
     formant_shifting_ratio = random.uniform(1, 1.4)
     use_reciprocal = random.uniform(-1, 1) > 0
     if use_reciprocal:
@@ -124,7 +136,11 @@ def formant_and_pitch_shift(sound):
 
 
 # fs
-def formant_shift(sound):
+def formant_shift(sound: parselmouth.Sound) -> parselmouth.Sound:
+    r"""
+
+    designed for formant shifting(fs) in the paper
+    """
     formant_shifting_ratio = random.uniform(1, 1.4)
     use_reciprocal = random.uniform(-1, 1) > 0
     if use_reciprocal:
@@ -194,8 +210,7 @@ def parametric_equalizer(wav: torch.Tensor, sr) -> torch.Tensor:
     return wav
 
 
-# https://webaudio.github.io/Audio-EQ-Cookbook/audio-eq-cookbook.html
-# implemented using the cookbook
+# implemented using the cookbook https://webaudio.github.io/Audio-EQ-Cookbook/audio-eq-cookbook.html
 def lowShelf_coeffs(dBgain, cutoff_freq, sample_rate, Q):
     A = math.pow(10, dBgain / 40.)
 
@@ -269,6 +284,7 @@ def apply_iir_filter(wav: torch.Tensor, ftype, dBgain, cutoff_freq, sample_rate,
 
 
 peq = parametric_equalizer
+fs = formant_shift
 
 
 # def f(wav: torch.Tensor, sr: int) -> torch.Tensor:
@@ -286,29 +302,33 @@ peq = parametric_equalizer
 
 
 def g(wav: torch.Tensor, sr: int) -> torch.Tensor:
+    r"""sequentially apply peq and fs
+
+
+    """
     wav = peq(wav, sr)
     wav_numpy = wav.numpy()
+
     sound = wav_to_Sound(wav_numpy, sampling_frequency=sr)
     sound = formant_shift(sound)
+
     wav = torch.from_numpy(sound.values).float().squeeze(0)
     return wav
 
 
 def f(wav: torch.Tensor, sr: int) -> torch.Tensor:
+    r"""sequentially apply peq, pr and fs
+
+
+    """
     wav = peq(wav, sr)
     wav_numpy = wav.numpy()
-    sound = wav_to_Sound(wav_numpy, sampling_frequency=sr)
-    sound = formant_shift(sound)
-    wav_numpy = sound.values
-    # wav = torch.from_numpy(wav_numpy).float()
 
     n_steps = random.uniform(-12, 12)
     wav_numpy = librosa.effects.pitch_shift(
         wav_numpy[0], sr=sr,
         n_steps=n_steps, bins_per_octave=12
     )
-    wav = torch.from_numpy(wav_numpy).float()
-
     # n_steps = random.randint(-24, 24)
     # with torch.no_grad():
     #     wav = AF.pitch_shift(
@@ -316,5 +336,11 @@ def f(wav: torch.Tensor, sr: int) -> torch.Tensor:
     #         n_steps=n_steps, bins_per_octave=12,
     #         n_fft=1024, win_length=1024, hop_length=256
     #     )
+
+    sound = wav_to_Sound(wav_numpy, sampling_frequency=sr)
+    sound = formant_shift(sound)
+    wav_numpy = sound.values
+
+    wav = torch.from_numpy(wav_numpy).float()
 
     return wav

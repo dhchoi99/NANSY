@@ -19,32 +19,44 @@ class CustomDataset(BaseDataset):
 
         self.configure_args()
 
-        self.data = None
+        self.data = []
         # data: list
-        # data[i]: dict should have:
-        # 'timestamp': tuple = (t_start(default=0), t_end(default=inf))
+        # data[i]: dict must have:
         # 'wav_path_22k': str = path_to_22k_wav_file
         # 'wav_path_16k': str = path_to_16k_wav_file
+        # 'speaker_id': str = speaker_id
+
+    # region init
 
     def configure_args(self):
         self.w_len = 2048  # for yingram
-        self.mel_len = 128
-        self.window_size = self.mel_len * self.conf.audio.hop_size - 1  # 32767, to make time-scale of mel to 128
-        self.time_size = self.window_size / 22050  # 1.48810 (sec)
-        self.window_size_16k = int(self.time_size * 16000)  # 23776
+        self.mel_window = 128  # window size in mel
+        self.audio_window_22k = self.mel_window * self.conf.audio.hop_size - 1  # 32767, window size in raw audio
+        self.segment_duration = self.audio_window_22k / 22050  # 1.48810 (sec)
+        self.audio_window_16k = int(self.segment_duration * 16000)  # 23776
 
-        self.yin_time = (self.window_size + self.w_len) / 22050.
-        self.yin_window_size = self.window_size + self.w_len
+        self.yin_window_22k = self.audio_window_22k + self.w_len
+        self.yin_segment_duration = self.yin_window_22k / 22050.
 
-        self.praat_voice_time = 0.2
-
-        self.mel_safety_index = 1  # index to give segment enough voice values
+    # endregion
 
     def __len__(self):
         return len(self.data)
 
+    # region getitem
+
     @staticmethod
-    def load_wav(path, sr=None):
+    def load_wav(path: str, sr: int = None):
+        r"""given str path, loads wav (supports raw audio, .npy, .pt dataform)
+
+        params:
+            path: path to audio data file
+            sr: sampling_rate, used only when path given to raw audio
+
+        returns:
+            wav_numpy: numpy.ndarray of shape (n, )
+            wav_torch: torch.Tensor of shape (n,)
+        """
         if path.endswith('.pt'):
             wav_torch = torch.load(path)
             wav_numpy = wav_torch.numpy()
@@ -53,31 +65,29 @@ class CustomDataset(BaseDataset):
             wav_torch = torch.from_numpy(wav_numpy).float()
         else:
             assert sr is not None
-            wav_numpy, sr = librosa.core.load(path, sr=sr)
-            wav_torch = torch.from_numpy(wav_numpy).float()
+            try:
+                wav_numpy, sr = librosa.core.load(path, sr=sr)
+                wav_torch = torch.from_numpy(wav_numpy).float()
+            except:
+                raise ValueError(f"could not load audio file from path :{path}")
         return wav_numpy, wav_torch
 
-    def load_mel_0(self, wav_path, sr=None):
-        mel_path = wav_path + '.dhc.mel'
+    # TODO load mel from torch.tensor audio
+    def load_mel(self, path_audio: str, sr: int = None) -> torch.Tensor:
+        r"""hifi-gan style mel loading
+
+        params:
+            path_audio: path to audio data file
+            sr: sampling rate
+
+        returns:
+            mel: torch.Tensor of shape (C x T)
+        """
+        mel_path = path_audio + '.kwkim.mel'
         try:
             mel = torch.load(mel_path, map_location='cpu')
         except Exception as e:
-            print(e)
-            wav_numpy, _ = self.load_wav(wav_path, sr)
-            mel = torch.from_numpy(
-                utils.audio.mel_from_audio(self.conf.audio, wav_numpy)
-            ).float().permute((1, 0))
-            torch.save(mel, mel_path)
-
-        return mel
-
-    def load_mel(self, wav_path, sr=None):
-        mel_path = wav_path + '.kwkim.mel'
-        try:
-            mel = torch.load(mel_path, map_location='cpu')
-        except Exception as e:
-            # print('load_mel', e)
-            _, wav_torch = self.load_wav(wav_path, sr=sr)
+            _, wav_torch = self.load_wav(path_audio, sr=sr)
             mel = utils.mel.mel_spectrogram(
                 wav_torch.unsqueeze(0),
                 self.conf.audio.n_fft,
@@ -87,13 +97,23 @@ class CustomDataset(BaseDataset):
                 self.conf.audio.win_size,
                 self.conf.audio.fmin,
                 self.conf.audio.fmax
-            )[0] # 1 x C x T -> C x T
+            )[0]  # 1 x C x T -> C x T
             torch.save(mel, mel_path)
         return mel
 
-
     @staticmethod
-    def pad_audio(x: torch.Tensor, length: int, value=0., pad_at='end'):
+    def pad_audio(x: torch.Tensor, length: int, value: float = 0., pad_at: str = 'end') -> torch.Tensor:
+        r"""pads value to audio data, at last dimension
+
+        params:
+            x: torch.Tensor of shape (..., T)
+            length: int, length to pad
+            value: float, value to pad
+            pad_at: str, 'start' or 'end'
+
+        returns:
+            y: padded torch.Tensor of shape (..., T+length)
+        """
         # x: (..., T)
         if pad_at == 'end':
             y = torch.cat([
@@ -108,8 +128,18 @@ class CustomDataset(BaseDataset):
         return y
 
     @staticmethod
-    def crop_audio(x: torch.Tensor, start: int, end: int, padding_value=0.):
-        # x.shape: (..., T)
+    def crop_audio(x: torch.Tensor, start: int, end: int, padding_value: float = 0.) -> torch.Tensor:
+        r"""crop audio data at last dimension from start to end, automatically pad with padding_value
+
+        params:
+            x: torch.Tensor of shape (..., T)
+            start: int, position to crop
+            end: int, position to crop
+            padding_value: float, value for padding when needed
+
+        returns:
+            y: torch.Tensor of shape (..., end-start)
+        """
         if start < 0:
             if end > x.shape[-1]:
                 y = x
@@ -126,55 +156,80 @@ class CustomDataset(BaseDataset):
         assert y.shape[-1] == end - start, f'{x.shape}, {start}, {end}, {y.shape}'
         return y
 
-    def get_wav_22k(self, wav_22k_path):
+    def get_wav_22k(self, wav_22k_path: str):
         wav_22k_numpy, wav_22k_torch = self.load_wav(wav_22k_path, 22050)
         return wav_22k_numpy, wav_22k_torch
 
-    def get_wav_16k(self, wav_16k_path, wav_22k_path=None, wav_22k_torch=None):
+    def get_wav_16k(self, wav_16k_path: str, wav_22k_path: str = None, wav_22k_torch: torch.Tensor = None):
+        r"""loads 16k audio
+
+        if 16k audio file exists, load audio
+        else, resample from 22k audio
+        """
         if wav_16k_path is not None and os.path.isfile(wav_16k_path):
             wav_16k_numpy, wav_16k_torch = self.load_wav(wav_16k_path, 16000)
-        else:
+        elif wav_22k_torch is not None:
             # wav_16k_torch = AF.resample(wav_22k_torch, 22050, 16000)
             wav_16k_torch = torchaudio.transforms.Resample(22050, 16000).forward(wav_22k_torch)
             wav_16k_numpy = wav_16k_torch.numpy()
+        elif wav_22k_path is not None:
+            raise NotImplementedError
+        else:
+            raise NotImplementedError
         return wav_16k_numpy, wav_16k_torch
 
-    def get_items_from_data(self, data):
-        wav_22k_path = data['wav_path_22k']
-        wav_16k_path = data['wav_path_16k']
+    def get_time_idxs(self, mel_length: int):
+        r"""calculates time-related idxs needed for getitem
 
-        wav_22k_numpy, wav_22k_torch = self.get_wav_22k(wav_22k_path)
-        wav_16k_numpy, wav_16k_torch = self.get_wav_16k(wav_16k_path, wav_22k_path, wav_22k_torch)
+        params:
+            mel_length: time length of mel
 
-        mel_22k = self.load_mel(wav_22k_path, sr=22050)
-        return wav_22k_torch, wav_16k_torch, mel_22k
-
-    def get_time_idxs(self, mel_length):
-        if mel_length < self.mel_len:
+        returns:
+            mel_start: int, start index of mel
+            mel_end: int, end index of mel
+            t_start: float, start time (sec)
+            w_start_16k: int, start index of 16k audio
+            w_start_22k: int, start index of 22k audio
+            w_end_16k: int, end index of 16k audio
+            w_end_22k: int, end index of 22k audio
+            w_end_22k_yin: int, end index of 22k audio for yin computation
+        """
+        if mel_length < self.mel_window:  # if mel_length is smaller than mel_window, use the first frame only and pad
             mel_start = 0
         else:
-            mel_start = random.randint(0, mel_length - self.mel_len)
-        mel_end = mel_start + self.mel_len
+            mel_start = random.randint(0, mel_length - self.mel_window)
+        mel_end = mel_start + self.mel_window
 
         t_start = mel_start * self.conf.audio.hop_size / 22050.
         w_start_22k = int(t_start * 22050)
         w_start_16k = int(t_start * 16000)
-        w_end_22k = w_start_22k + self.window_size
-        w_end_22k_yin = w_start_22k + self.yin_window_size
-        w_end_16k = w_start_16k + self.window_size_16k
+        w_end_22k = w_start_22k + self.audio_window_22k
+        w_end_22k_yin = w_start_22k + self.yin_window_22k
+        w_end_16k = w_start_16k + self.audio_window_16k
 
         return mel_start, mel_end, t_start, w_start_16k, w_start_22k, w_end_16k, w_end_22k, w_end_22k_yin
 
-    def get_pos_sample(self, data):
+    def get_pos_sample(self, data: dict):
+        r"""loads positive sample from data
+
+        params:
+            data: dict, item from self.data
+
+        returns:
+            return_data: dict, positive sample related data
+        """
         return_data = {}
         return_data['wav_path_22k'] = data['wav_path_22k']
         return_data['text'] = data['text']
 
-        wav_22k_torch, wav_16k_torch, pos_mel_22k = self.get_items_from_data(data)
-        pos_time_idxs = self.get_time_idxs(pos_mel_22k.shape[-1])
+        _, wav_22k_torch = self.get_wav_22k(data['wav_path_22k'])
+        _, wav_16k_torch = self.get_wav_16k(data['wav_path_16k'], data['wav_path_22k'], wav_22k_torch)
+        mel_22k = self.load_mel(data['wav_path_22k'], sr=22050)
 
-        pos_mel_22k = self.crop_audio(pos_mel_22k, pos_time_idxs[0], pos_time_idxs[1], padding_value=-4)
-        return_data['gt_mel_22k'] = pos_mel_22k
+        pos_time_idxs = self.get_time_idxs(mel_22k.shape[-1])
+
+        mel_22k = self.crop_audio(mel_22k, pos_time_idxs[0], pos_time_idxs[1], padding_value=-4)
+        return_data['gt_mel_22k'] = mel_22k
 
         assert pos_time_idxs[3] <= wav_16k_torch.shape[-1], '16k_1'
         wav_16k = self.crop_audio(wav_16k_torch, pos_time_idxs[3], pos_time_idxs[5])
@@ -189,21 +244,32 @@ class CustomDataset(BaseDataset):
 
         return return_data
 
-    def get_neg_sample(self, neg_data):
+    def get_neg_sample(self, data: dict):
         return_data = {}
 
-        negative_audio_22k, negative_audio_16k, negative_mel_22k = self.get_items_from_data(neg_data)
-        negative_time_idxs = self.get_time_idxs(negative_mel_22k.shape[-1])
+        _, wav_22k_torch = self.get_wav_22k(data['wav_path_22k'])
+        _, wav_16k_torch = self.get_wav_16k(data['wav_path_16k'], data['wav_path_22k'], wav_22k_torch)
+        mel_22k = self.load_mel(data['wav_path_22k'], sr=22050)
 
-        assert negative_time_idxs[3] <= negative_audio_16k.shape[-1], "16k_nega"
-        wav_16k_negative = self.crop_audio(negative_audio_16k, negative_time_idxs[3], negative_time_idxs[5])
+        negative_time_idxs = self.get_time_idxs(mel_22k.shape[-1])
+
+        assert negative_time_idxs[3] <= wav_16k_torch.shape[-1], "16k_nega"
+        wav_16k_negative = self.crop_audio(wav_16k_torch, negative_time_idxs[3], negative_time_idxs[5])
 
         return_data['gt_audio_16k_negative'] = wav_16k_negative
         return return_data
 
-    def getitem(self, pos_idx):
+    def getitem(self, pos_idx: int):
+        r"""
+
+        params:
+            pos_idx: int
+        returns:
+            return_data: dict
+        """
         pos_data = self.data[pos_idx]
 
+        # get negative sample idx: speaker_id should be different
         neg_idx = random.randint(0, len(self) - 1)
         neg_data = self.data[neg_idx]
         while neg_data['speaker_id'] == pos_data['speaker_id']:
@@ -211,9 +277,11 @@ class CustomDataset(BaseDataset):
             neg_data = self.data[neg_idx]
 
         return_data = {}
-        pos_data = self.get_pos_sample(pos_data)
-        neg_data = self.get_neg_sample(neg_data)
-        return_data.update(pos_data)
-        return_data.update(neg_data)
+        return_data_pos = self.get_pos_sample(pos_data)
+        return_data_neg = self.get_neg_sample(neg_data)
+        return_data.update(return_data_pos)
+        return_data.update(return_data_neg)
 
         return return_data
+
+    # endregion

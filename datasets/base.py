@@ -1,7 +1,7 @@
 import importlib
 import random
 
-from omegaconf import OmegaConf
+from omegaconf import OmegaConf, DictConfig
 import parselmouth
 from torch.utils.data import Dataset
 from tqdm import tqdm, trange
@@ -10,7 +10,7 @@ from utils.conf import set_conf
 
 
 class BaseDataset(Dataset):
-    def __init__(self, conf):
+    def __init__(self, conf: DictConfig):
         super(BaseDataset, self).__init__()
         self.conf = set_conf(conf)
 
@@ -30,15 +30,15 @@ class BaseDataset(Dataset):
                 result = self.getitem(idx)
                 return result
             except AssertionError as e:
-                print(e)
+                # print(e)
                 raise e
             except parselmouth.PraatError as e:
-                print(e)
+                # print(e)
                 raise e
             except Exception as e:
                 raise e
                 # print(f'error {e} on idx {idx}')
-                # idx = random.randint(0, len(self))
+                # idx = random.randint(0, len(self) - 1)
 
     # endregion
 
