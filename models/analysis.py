@@ -5,7 +5,7 @@ import torch
 import transformers
 
 from models.ecapa import ECAPA_TDNN
-from models.yin import differenceFunction, cumulativeMeanNormalizedDifferenceFunction
+from models.yin import *
 
 
 class Linguistic(torch.nn.Module):
@@ -16,6 +16,7 @@ class Linguistic(torch.nn.Module):
         self.wav2vec2 = transformers.Wav2Vec2ForPreTraining.from_pretrained("facebook/wav2vec2-large-xlsr-53")
         for param in self.wav2vec2.parameters():
             param.requires_grad = False
+            param.grad = None
         self.wav2vec2.eval()
 
     def forward(self, x):
@@ -43,6 +44,7 @@ class Speaker(torch.nn.Module):
         self.wav2vec2 = transformers.Wav2Vec2ForPreTraining.from_pretrained("facebook/wav2vec2-large-xlsr-53")
         for param in self.wav2vec2.parameters():
             param.requires_grad = False
+            param.grad = None
         self.wav2vec2.eval()
 
         # c_in = 1024 for wav2vec2
@@ -97,55 +99,40 @@ class Pitch(torch.nn.Module):
         return lag
 
     @staticmethod
-    def yingram_from_cmndf(cmndf, m, sr=22050):
-        c_m = Pitch.midi_to_lag(m, sr)
-        c_m_ceil = int(np.ceil(c_m))
-        c_m_floor = int(np.floor(c_m))
-        assert c_m_ceil != c_m_floor
+    def yingram_from_cmndf(cmndfs: torch.Tensor, ms: list, sr=22050) -> torch.Tensor:
+        c_ms = np.asarray([Pitch.midi_to_lag(m, sr) for m in ms])
+        c_ms = torch.from_numpy(c_ms).to(cmndfs.device)
+        c_ms_ceil = torch.ceil(c_ms).long().to(cmndfs.device)
+        c_ms_floor = torch.floor(c_ms).long().to(cmndfs.device)
 
-        y = (cmndf[c_m_ceil] - cmndf[c_m_floor]) / (c_m_ceil - c_m_floor) * (c_m - c_m_floor) + cmndf[c_m_floor]
+        y = (cmndfs[:, c_ms_ceil] - cmndfs[:, c_ms_floor]) / (c_ms_ceil - c_ms_floor).unsqueeze(0) * (
+                c_ms - c_ms_floor).unsqueeze(0) + cmndfs[:, c_ms_floor]
         return y
-
-    @staticmethod
-    def compute_yin(x, m, tau_max=2048, sr=22050):
-        df = differenceFunction(x, x.shape[-1], tau_max)
-        cmndf = cumulativeMeanNormalizedDifferenceFunction(df, tau_max)
-
-        y = Pitch.yingram_from_cmndf(cmndf, m, sr=sr)
-        return y
-
-    def forward(self, x: torch.Tensor):
-        # x.shape: B x t
-        raise NotImplementedError
 
     @staticmethod
     def yingram(x: torch.Tensor, W=2048, tau_max=2048, sr=22050, w_step=256):
         # x.shape: t
-        x = x.detach().cpu().numpy()
-        yingram = []
-
         w_len = W
 
         startFrames = list(range(0, x.shape[-1] - w_len, w_step))
-        times = [t / float(sr) for t in startFrames]
+        startFrames = np.asarray(startFrames)
+        # times = startFrames / sr
         frames = [x[..., t:t + W] for t in startFrames]
-
-        for idx, frame in enumerate(frames):
-            df = differenceFunction(frame, frame.shape[-1], tau_max)
-            cmndf = cumulativeMeanNormalizedDifferenceFunction(df, tau_max)
-
-            yins = []
-            for midi in range(5, 85):
-                y = Pitch.yingram_from_cmndf(cmndf, midi, sr)
-                yins.append(y)
-            yins = np.asarray(yins)
-            yingram.append(yins)
-        yingram = np.asarray(yingram)
-        yingram = torch.from_numpy(yingram).float()
+        frames_torch = torch.stack(frames, dim=0).to(x.device)
+        # frames = np.asarray(frames)
+        # frames_torch = torch.from_numpy(frames).to(x.device)
+        dfs = differenceFunctionTorch(frames_torch, frames_torch.shape[-1], tau_max)
+        cmndfs = cumulativeMeanNormalizedDifferenceFunctionTorch(dfs, tau_max)
+        yingram = Pitch.yingram_from_cmndf(cmndfs, list(range(5, 85)), sr)
         return yingram
 
     @staticmethod
     def yingram_batch(x, W=2048, tau_max=2048, sr=22050, w_step=256):
+        """
+
+        params:
+            x.shape: B, n
+        """
         batch_results = []
         for i in range(len(x)):
             yingram = Pitch.yingram(x[i], W, tau_max, sr, w_step)
@@ -170,21 +157,22 @@ if __name__ == '__main__':
     import torch
 
     wav = torch.randn(2, 20000)
-    mel = torch.randn(2, 150, 80)
+    mel = torch.randn(2, 80, 128)
 
     linguistic = Linguistic()
     speaker = Speaker()
     energy = Energy()
     pitch = Pitch()
 
-    lps = linguistic(wav)
-    print(lps.shape)
+    with torch.no_grad():
+        lps = linguistic(wav)
+        print(lps.shape)
 
-    s = speaker(wav)
-    print(s.shape)
+        s = speaker(wav)
+        print(s.shape)
 
-    e = energy(mel)
-    print(e.shape)
+        e = energy(mel)
+        print(e.shape)
 
-    ps = pitch(wav)
-    print(ps.shape)
+        ps = pitch(wav)
+        print(ps.shape)
