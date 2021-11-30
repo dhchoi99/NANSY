@@ -18,7 +18,7 @@ pl:
 
 logging:
   log_dir: /raid/vision/dhchoi/log/nansy/
-  seed: "29"
+  seed: "30"
   freq: 100
   device: cuda
   nepochs: 1000
@@ -36,8 +36,9 @@ datasets:
   train:
     class: datasets.base.MultiDataset
     datasets: [
-        'configs/datasets/vctk.yaml',
-        'configs/datasets/libritts360.yaml',
+        'configs/datasets/css10.yaml'
+#        'configs/datasets/vctk.yaml',
+#        'configs/datasets/libritts360.yaml',
 #        'configs/datasets/css10_chinese.yaml',
 #        'configs/datasets/css10_dutch.yaml',
 #        'configs/datasets/css10_finnish.yaml',
@@ -58,8 +59,9 @@ datasets:
   eval:
     class: datasets.base.MultiDataset
     datasets: [
-        'configs/datasets/vctk.yaml',
-        'configs/datasets/libritts360.yaml',
+        'configs/datasets/css10.yaml'
+#        'configs/datasets/vctk.yaml',
+#        'configs/datasets/libritts360.yaml',
 #        'configs/datasets/css10_chinese.yaml',
 #        'configs/datasets/css10_dutch.yaml',
 #        'configs/datasets/css10_finnish.yaml',

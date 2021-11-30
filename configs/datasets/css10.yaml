@@ -1,0 +1,35 @@
+class: datasets.css10.CSS10AllDataset
+load:
+  audio: 'configs/audio/22k.yaml'
+
+subdatasets:
+  Chinese:
+    metadata: /raid/vision/dhchoi/data/CSS10/CSS_Chinese/transcript.txt
+    root: /raid/vision/dhchoi/data/CSS10/CSS_Chinese
+  Dutch:
+    metadata: /raid/vision/dhchoi/data/CSS10/CSS_Dutch/transcript.txt
+    root: /raid/vision/dhchoi/data/CSS10/CSS_Dutch
+  Finnish:
+    metadata: /raid/vision/dhchoi/data/CSS10/CSS_Finnish/transcript.txt
+    root: /raid/vision/dhchoi/data/CSS10/CSS_Finnish
+  French:
+    metadata: /raid/vision/dhchoi/data/CSS10/CSS_French/transcript.txt
+    root: /raid/vision/dhchoi/data/CSS10/CSS_French
+  Greek:
+    metadata: /raid/vision/dhchoi/data/CSS10/CSS_Greek/transcript.txt
+    root: /raid/vision/dhchoi/data/CSS10/CSS_Greek
+  German:
+    metadata: /raid/vision/dhchoi/data/CSS10/CSS_German/transcript.txt
+    root: /raid/vision/dhchoi/data/CSS10/CSS_German
+  Hungarian:
+    metadata: /raid/vision/dhchoi/data/CSS10/CSS_Hungarian/transcript.txt
+    root: /raid/vision/dhchoi/data/CSS10/CSS_Hungarian
+  Japanese:
+    metadata: /raid/vision/dhchoi/data/CSS10/CSS_Japanese/transcript.txt
+    root: /raid/vision/dhchoi/data/CSS10/CSS_Japanese
+  Russian:
+    metadata: /raid/vision/dhchoi/data/CSS10/CSS_Russian/transcript.txt
+    root: /raid/vision/dhchoi/data/CSS10/CSS_Russian
+  Spanish:
+    metadata: /raid/vision/dhchoi/data/CSS10/CSS_Spanish/transcript.txt
+    root: /raid/vision/dhchoi/data/CSS10/CSS_Spanish
