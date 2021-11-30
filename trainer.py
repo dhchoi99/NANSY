@@ -236,7 +236,7 @@ class Trainer(pl.LightningModule):
                 value = value.squeeze()
                 if value.ndim == 0:
                     # tensorboard.add_scalar(f'{mode}/{key}', value, self.global_step)
-                    self.log(f'{mode}/{key}', value)
+                    self.log(f'{mode}/{key}', value, batch_size=self.conf.datasets.train.batch_size)
                 elif value.ndim == 3:
                     if value.shape[0] == 3:  # if 3-dim image
                         tensorboard.add_image(f'{mode}/{key}', value, self.global_step, dataformats='CHW')

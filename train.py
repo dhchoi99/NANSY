@@ -16,8 +16,8 @@ def parse_args():
 
     parser.add_argument("--config", type=str, default="configs/train_nansy.yaml")
 
-    parser.add_argument('-g', '--gpus', type=str, default="-1",
-                        help="Number of gpus to use (e.g. '0,1,2,3'). Will use all if not given.")
+    parser.add_argument('-g', '--gpus', type=str,
+                        help="")
     parser.add_argument('-p', '--resume_checkpoint_path', type=str, default=None,
                         help="path of checkpoint for resuming")
 
