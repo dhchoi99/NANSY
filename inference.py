@@ -39,15 +39,35 @@ class TSAHelper(torch.nn.Module):
         return y
 
 
+def parse_args():
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument('--path_audio_conf', type=str, default='configs/audio/22k.yaml',
+                        help='')
+    parser.add_argument('--path_ckpt', type=str, required=True,
+                        help='path to pl checkpoint')
+    parser.add_argument('--path_audio_source', type=str, required=True,
+                        help='path to source audio file, sr=22k')
+
+    parser.add_argument('--path_audio_target', type=str, required=True,
+                        help='path to target audio file, sr=16k')
+
+    parser.add_argument('--tsa_loop', type=int, default=100,
+                        help='iterations for tsa')
+
+    args = parser.parse_args()
+    return args
+
+
 def main():
-    path_conf = '/root/NANSY/configs/train_nansy.yaml'
+    args = parse_args()
+    # path_audio_conf = 'configs/audio/22k.yaml'
+    # path_ckpt = '/raid/vision/dhchoi/log/nansy/31/checkpoints/epoch=33-step=154708.ckpt'
+    # path_audio_source = '/raid/vision/dhchoi/data/VCTK-Corpus/wav22/p376/p376_293-22k.wav'
+    # path_audio_target = '/raid/vision/dhchoi/temp/DS2632_00322.wav'
+    # tsa_loop = 100
 
-    path_ckpt = '/raid/vision/dhchoi/log/nansy/31/checkpoints/epoch=33-step=154708.ckpt'
-
-    path_audio_source = '/raid/vision/dhchoi/data/VCTK-Corpus/wav22/p376/p376_293-22k.wav'
-    path_audio_target = '/raid/vision/dhchoi/temp/DS2632_00322.wav'
-
-    data_ckpt = torch.load(path_ckpt, map_location='cpu')
+    data_ckpt = torch.load(args.path_ckpt, map_location='cpu')
     state_dict = data_ckpt['state_dict']
 
     new_state_dict = pl_checkpoint_to_torch_checkpoints(state_dict)
@@ -61,20 +81,29 @@ def main():
     analysis.cuda(1).eval()
     synthesis.cuda(1).eval()
 
+    # for param in analysis.parameters():
+    #     param.requires_grad = False
+    #
+    # for key, param in synthesis.named_parameters():
+    #     if key.startswith('filter_generator'):
+    #         param.requires_grad = True
+    #     else:
+    #         param.requires_grad = False
+
     networks = {'Analysis': analysis, 'Synthesis': synthesis}
 
     tsa_helper = TSAHelper().cuda(1)
     print(tsa_helper.embedding)
     opt = torch.optim.Adam(tsa_helper.parameters(), lr=1e-4, betas=(0.5, 0.9))
 
-    conf_audio = OmegaConf.load('configs/audio/22k.yaml')
+    conf_audio = OmegaConf.load(args.path_audio_conf)
     conf = DictConfig({'audio': conf_audio})
 
     self = CustomDataset(conf)
-    _, wav_22k_source = self.load_wav(path_audio_source, 22050)
+    _, wav_22k_source = self.load_wav(args.path_audio_source, 22050)
     wav_16k_source = AF.resample(wav_22k_source, 22050, 16000)
-    _, wav_16k_target = self.load_wav(path_audio_target, 16000)
-    mel_22k = self.load_mel(path_audio_source, sr=22050)
+    _, wav_16k_target = self.load_wav(args.path_audio_target, 16000)
+    mel_22k = self.load_mel(args.path_audio_source, sr=22050)
 
     return_data = {}
 
@@ -86,8 +115,6 @@ def main():
         'gen_source_tsa': [],
         'gen_target_tsa': [],
     }
-
-    tsa_loop = 100
 
     for idx in trange(0, mel_22k.shape[-1], self.mel_window):
         mel_start = idx
@@ -108,7 +135,6 @@ def main():
         return_data['source_22k_yin'] = source_22k_yin
         return_data['source_22k_mel'] = gt_mel_22k
 
-        #     return_data['t'] = t_start
         batch = {key: value.unsqueeze(0).cuda(1) for key, value in return_data.items()}
 
         audios['gt_source'].append(batch['source_22k'][0].cpu().numpy())
@@ -130,7 +156,7 @@ def main():
             result = networks['Synthesis'](lps, s_tgt, e, ps)
             audios['gen_target'].append(result['audio_gen'][0].cpu().numpy())
 
-        for i in range(tsa_loop):  # test time self adaptation
+        for i in range(args.tsa_loop):  # test time self adaptation
             lps_tsa = lps.detach().clone()
             lps_tsa = tsa_helper(lps_tsa)
             result = networks['Synthesis'](lps_tsa, s_src, e, ps)
@@ -161,7 +187,22 @@ def main():
 
 
 if __name__ == '__main__':
+    import os
+    from scipy.io import wavfile
+
     final_audios = main()
+
+    dir_save = './temp_result'
+    os.makedirs(dir_save, exist_ok=True)
+    for key, value in final_audios.items():
+        sample_rate = 22050 if key != 'gt_target' else 16000
+        try:
+            wavfile.write(
+                os.path.join(dir_save, f'{key}.wav'),
+                sample_rate,
+                value.squeeze().astype(np.float32))
+        except Exception as e:
+            print(key, e)
 
     # import IPython.display as ipd
     # ipd.Audio(final_audios['gt_source'], rate=22050)

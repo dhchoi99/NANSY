@@ -3,10 +3,10 @@
 Unofficial Pytorch Implementation of
 [Neural Analysis and Synthesis: Reconstructing Speech from Self-Supervised Representations](https://arxiv.org/pdf/2110.14513.pdf)
 
-
-## ???
+## .
 
 ### Papers' Demo
+
 Check Authors'
 [Demo page](https://harsh-grenadilla-e40.notion.site/Demo-page-for-NANSY-37d4fd8ffb514765a2b234b04c8fc0f6)
 
@@ -61,7 +61,14 @@ else `python train_torch.py`
 
 ## Inference
 
-TODO  
+### Generator
+
 `python inference.py`
 
+### Discriminator
+
+TODO
+
 ## License
+
+TODO    
