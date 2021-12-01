@@ -195,7 +195,14 @@ class CustomDataset(BaseDataset):
             raise NotImplementedError
         return wav_16k_numpy, wav_16k_torch
 
-    def get_time_idxs(self, mel_length: int):
+    def get_random_start_time(self, mel_length: int):
+        if mel_length < self.mel_window:  # if mel_length is smaller than mel_window, use the first frame only and pad
+            mel_start = 0
+        else:
+            mel_start = random.randint(0, mel_length - self.mel_window)
+        return mel_start
+
+    def get_time_idxs(self, mel_start: int):
         r"""calculates time-related idxs needed for getitem
 
         params:
@@ -211,10 +218,6 @@ class CustomDataset(BaseDataset):
             w_end_22k: int, end index of 22k audio
             w_end_22k_yin: int, end index of 22k audio for yin computation
         """
-        if mel_length < self.mel_window:  # if mel_length is smaller than mel_window, use the first frame only and pad
-            mel_start = 0
-        else:
-            mel_start = random.randint(0, mel_length - self.mel_window)
         mel_end = mel_start + self.mel_window
 
         t_start = mel_start * self.conf.audio.hop_size / 22050.
@@ -243,7 +246,8 @@ class CustomDataset(BaseDataset):
         _, wav_16k_torch = self.get_wav_16k(data['wav_path_16k'], data['wav_path_22k'], wav_22k_torch)
         mel_22k = self.load_mel(data['wav_path_22k'], sr=22050)
 
-        pos_time_idxs = self.get_time_idxs(mel_22k.shape[-1])
+        mel_start = self.get_random_start_time(mel_22k.shape[-1])
+        pos_time_idxs = self.get_time_idxs(mel_start)
 
         mel_22k = self.crop_audio(mel_22k, pos_time_idxs[0], pos_time_idxs[1], padding_value=-self.mel_padding_value)
         return_data['gt_mel_22k'] = mel_22k
@@ -268,7 +272,8 @@ class CustomDataset(BaseDataset):
         _, wav_16k_torch = self.get_wav_16k(data['wav_path_16k'], data['wav_path_22k'], wav_22k_torch)
         mel_22k = self.load_mel(data['wav_path_22k'], sr=22050)
 
-        negative_time_idxs = self.get_time_idxs(mel_22k.shape[-1])
+        mel_start = self.get_random_start_time(mel_22k.shape[-1])
+        negative_time_idxs = self.get_time_idxs(mel_start)
 
         assert negative_time_idxs[3] <= wav_16k_torch.shape[-1], "16k_nega"
         wav_16k_negative = self.crop_audio(wav_16k_torch, negative_time_idxs[3], negative_time_idxs[5])
