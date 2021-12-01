@@ -36,11 +36,11 @@ class Trainer(pl.LightningModule):
             param.requires_grad = False
 
     def load_vocoder(self):
-        path_config = './configs/hifi-gan/config.json'
+        path_config = './configs/hifi-gan/UNIVERSAL_V1/config.json'
         hifigan_config = OmegaConf.load(path_config)
         self.vocoder = hifigan_vocoder(hifigan_config)
 
-        path_ckpt = './configs/hifi-gan/generator_v1'
+        path_ckpt = './configs/hifi-gan/UNIVERSAL_V1/g_02500000'
 
         state_dict_g = torch.load(path_ckpt)
         self.vocoder.load_state_dict(state_dict_g['generator'])

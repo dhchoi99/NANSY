@@ -146,8 +146,8 @@ class Synthesis(nn.Module):
         self.set_vocoder()
 
     def set_vocoder(self):
-        path_config = './configs/hifi-gan/config.json'
-        path_ckpt = './configs/hifi-gan/generator_v1'
+        path_config = './configs/hifi-gan/UNIVERSAL_V1/config.json'
+        path_ckpt = './configs/hifi-gan/UNIVERSAL_V1/g_02500000'
 
         hifigan_config = OmegaConf.load(path_config)
         self.vocoder = hifigan_vocoder(hifigan_config)
