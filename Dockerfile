@@ -16,6 +16,7 @@ RUN python -m pip --no-cache-dir install --upgrade pip setuptools && \
     omegaconf \
     pytorch_lightning \
     tqdm \
+    librosa \
     tensorboard && \
     python -m pip uninstall -y \
     torchtext tensorboard-plugin-dlprof

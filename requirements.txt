@@ -7,3 +7,4 @@ omegaconf
 pytorch_lightning
 tqdm
 tensorboard
+librosa >= 0.8.0
