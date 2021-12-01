@@ -1,17 +1,13 @@
-import importlib
-
-hifigan = importlib.import_module('models.hifi-gan')
-hifigan_vocoder = getattr(hifigan, 'Generator')
-import json
-import os
-
+from omegaconf import OmegaConf
 import torch
 from torch import nn
 import torch.nn.functional as F
 
+from models.hifi_gan import Generator as hifigan_vocoder
+
 
 class ConditionalLayerNorm(nn.Module):
-    def __init__(self, embedding_dim, normalize_embedding=True):
+    def __init__(self, embedding_dim: int, normalize_embedding: bool = True):
         super(ConditionalLayerNorm, self).__init__()
         self.normalize_embedding = normalize_embedding
 
@@ -24,7 +20,6 @@ class ConditionalLayerNorm(nn.Module):
         scale = self.linear_scale(embedding).unsqueeze(-1)  # shape: (B, 1, 1)
         bias = self.linear_bias(embedding).unsqueeze(-1)  # shape: (B, 1, 1)
 
-        # out = self.norm(x)
         out = (x - torch.mean(x, dim=-1, keepdim=True)) / torch.var(x, dim=-1, keepdim=True)
         out = scale * out + bias
         return out
@@ -117,9 +112,16 @@ class Generator(nn.Module):
         self.lastConv = nn.Conv1d(c_mid + 1, c_out, kernel_size=1, dilation=1)
 
     def forward(self, x, energy, speaker_embedding):
-        # x.shape: B x C x t
-        # energy.shape: B x 1 x t
-        # embedding.shape: B x d x 1
+        """
+
+        Args:
+            x: wav2vec feature or yingram. torch.Tensor of shape (B x C x t)
+            energy: energy. torch.Tensor of shape (B x 1 x t)
+            speaker_embedding: embedding. torch.Tensor of shape (B x d x 1)
+
+        Returns:
+
+        """
         y = self.network1(x)
         B, C, _ = y.shape
 
@@ -141,29 +143,16 @@ class Synthesis(nn.Module):
         self.filter_generator = Generator(1024, 512, 128, 80)
         self.source_generator = Generator(50, 512, 128, 80)
 
+        self.set_vocoder()
+
+    def set_vocoder(self):
         path_config = './configs/hifi-gan/config.json'
-        with open(path_config) as f:
-            data = f.read()
-        json_config = json.loads(data)
-
-        class AttrDict(dict):
-            def __init__(self, *args, **kwargs):
-                super(AttrDict, self).__init__(*args, **kwargs)
-                self.__dict__ = self
-
-        hifigan_config = AttrDict(json_config)
-        self.vocoder = hifigan_vocoder(hifigan_config)
-
         path_ckpt = './configs/hifi-gan/generator_v1'
 
-        def load_checkpoint(filepath):
-            assert os.path.isfile(filepath)
-            print("Loading '{}'".format(filepath))
-            checkpoint_dict = torch.load(filepath)
-            print("Complete.")
-            return checkpoint_dict
+        hifigan_config = OmegaConf.load(path_config)
+        self.vocoder = hifigan_vocoder(hifigan_config)
 
-        state_dict_g = load_checkpoint(path_ckpt)
+        state_dict_g = torch.load(path_ckpt)
         self.vocoder.load_state_dict(state_dict_g['generator'])
         self.vocoder.eval()
 
@@ -211,7 +200,7 @@ class ResBlock(nn.Module):
 
 
 class Discriminator(nn.Module):
-    def __init__(self, conf):
+    def __init__(self, conf=None):
         super(Discriminator, self).__init__()
         c_in = 80
         c_mid = 128
@@ -232,8 +221,13 @@ class Discriminator(nn.Module):
     def forward(self, mel, positive, negative):
         """
 
-        x.shape: B x C x t
-        speaker_embedding.shape: B x d
+        Args:
+            mel: mel spectrogram, torch.Tensor of shape (B x C x T)
+            positive: positive speaker embedding, torch.Tensor of shape (B x d)
+            negative: negative speaker embedding, torch.Tensor of shape (B x d)
+
+        Returns:
+
         """
         pred1 = self.psi(self.phi(mel))
         pred = self.res(self.phi(mel))

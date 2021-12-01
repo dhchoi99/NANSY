@@ -49,6 +49,17 @@ def cumulativeMeanNormalizedDifferenceFunction(df, N, eps=1e-8):
 
 
 def differenceFunctionBatch(xs: np.ndarray, N, tau_max):
+    """numpy backend batch-wise differenceFunction
+
+    Args:
+        xs: audio segments, np.ndarray of shape (B x t)
+        N:
+        tau_max:
+
+    Returns:
+        y: dF. np.ndarray of shape (B x tau_max)
+
+    """
     xs = xs.astype(np.float64)
     w = xs.shape[-1]
     tau_max = min(tau_max, w)
@@ -71,18 +82,35 @@ def differenceFunctionBatch(xs: np.ndarray, N, tau_max):
     return y
 
 
-def cumulativeMeanNormalizedDifferenceFunctionBatch(dfs, N, eps=1e-8):
+def cumulativeMeanNormalizedDifferenceFunctionBatch(dFs, N, eps=1e-8):
+    """numpy backend batch-wise cumulative Mean Normalized Difference Functions
+
+    Args:
+        dFs: differenceFunctions. np.ndarray of shape (B x tau_max)
+        N:
+        eps:
+
+    Returns:
+        cMNDFs: np.ndarray of shape (B x tau_max)
+
+    """
     arange = np.asarray(list(range(1, N)))[np.newaxis, ...]
-    cumsum = np.cumsum(dfs[:, 1:], axis=-1).astype(float)
-    cmndfs = dfs[:, 1:] * arange / (cumsum + eps)
-    cmndfs = np.concatenate((np.zeros((cmndfs.shape[0], 1)), cmndfs), axis=1)
-    return cmndfs
+    cumsum = np.cumsum(dFs[:, 1:], axis=-1).astype(float)
+    cMNDFs = dFs[:, 1:] * arange / (cumsum + eps)
+    cMNDFs = np.concatenate((np.zeros((cMNDFs.shape[0], 1)), cMNDFs), axis=1)
+    return cMNDFs
 
 
 def differenceFunctionTorch(xs: torch.Tensor, N, tau_max) -> torch.Tensor:
-    r"""
-
+    """pytorch backend batch-wise differenceFunction
     has 1e-4 level error with input shape of (32, 22050*1.5)
+    Args:
+        xs:
+        N:
+        tau_max:
+
+    Returns:
+
     """
     xs = xs.double()
     w = xs.shape[-1]
@@ -129,8 +157,6 @@ if __name__ == '__main__':
     # times = startFrames / sr
     frames = [x[..., t:t + W] for t in startFrames]
     frames = np.asarray(frames)
-    # frames_torch = [wav[0][..., t:t+W] for t in startFrames]
-    # frames_torch = torch.from_numpy(np.asarray(frames_torch))
     frames_torch = torch.from_numpy(frames).cuda()
 
     cmndfs0 = []

@@ -10,6 +10,11 @@ from models.yin import *
 
 class Linguistic(torch.nn.Module):
     def __init__(self, conf=None):
+        """we decided to use the intermediate features of XLSR-53. More specifically, we used the output from the 12th layer of the 24-layer transformer encoder.
+
+        Args:
+            conf:
+        """
         super(Linguistic, self).__init__()
         self.conf = conf
 
@@ -20,10 +25,17 @@ class Linguistic(torch.nn.Module):
         self.wav2vec2.eval()
 
     def forward(self, x):
-        # x.shape: B x t
+        """
+
+        Args:
+            x: torch.Tensor of shape (B x t)
+
+        Returns:
+            y: torch.Tensor of shape(B x C x t)
+        """
         with torch.no_grad():
             outputs = self.wav2vec2(x, output_hidden_states=True)
-        y = outputs.hidden_states[1]
+        y = outputs.hidden_states[1]  # B x t x C(1024)
         y = y.permute((0, 2, 1))  # B x t x C -> B x C x t
         return y
 
@@ -38,6 +50,11 @@ class Linguistic(torch.nn.Module):
 
 class Speaker(torch.nn.Module):
     def __init__(self, conf=None):
+        """We train a speaker embedding network that uses the 1st layer of XLSR-53 as an input. For the speaker embedding network, we borrow the neural architecture from a state-of-the-art speaker recognition network [14]
+
+        Args:
+            conf:
+        """
         super(Speaker, self).__init__()
         self.conf = conf
 
@@ -48,16 +65,23 @@ class Speaker(torch.nn.Module):
         self.wav2vec2.eval()
 
         # c_in = 1024 for wav2vec2
-        # original paper used 512 and 192 for c_mid and c_out, respectively
+        # original paper[14] used 512 and 192 for c_mid and c_out, respectively
         self.spk = ECAPA_TDNN(c_in=1024, c_mid=512, c_out=192)
 
     def forward(self, x):
-        # x.shape: B x t
+        """
+
+        Args:
+            x: torch.Tensor of shape (B x t)
+
+        Returns:
+            y: torch.Tensor of shape (B x 192)
+        """
         with torch.no_grad():
             outputs = self.wav2vec2(x, output_hidden_states=True)
-        y = outputs.hidden_states[12]
+        y = outputs.hidden_states[12]  # B x t x C(1024)
         y = y.permute((0, 2, 1))  # B x t x C -> B x C x t
-        y = self.spk(y)
+        y = self.spk(y)  # B x C(1024) x t -> B x D(192)
         return y
 
     def train(self, mode: bool = True):
@@ -76,8 +100,14 @@ class Energy(torch.nn.Module):
         self.conf = conf
 
     def forward(self, mel):
-        # mel: B x t x C
-        # For the energy feature, we simply took an average from a log-mel spectrogram along the frequency axis.
+        """For the energy feature, we simply took an average from a log-mel spectrogram along the frequency axis.
+
+        Args:
+            mel: torch.Tensor of shape (B x t x C)
+
+        Returns:
+            y: torch.Tensor of shape (B x 1 x C)
+        """
         y = torch.mean(mel, dim=1, keepdim=True)  # B x 1(channel) x t
         return y
 
@@ -88,18 +118,39 @@ class Pitch(torch.nn.Module):
         self.conf = conf
 
     @staticmethod
-    def midi_to_hz(m, semitone_range=12):
-        f = 440 * math.pow(2, (m - 69) / semitone_range)
-        return f
+    def midi_to_lag(m: int, sr: int, semitone_range: float = 12):
+        """converts midi-to-lag, eq. (4)
 
-    @staticmethod
-    def midi_to_lag(m, sr, semitone_range=12):
-        f = Pitch.midi_to_hz(m, semitone_range)
+        Args:
+            m: midi
+            sr: sample_rate
+            semitone_range:
+
+        Returns:
+            lag: time lag(tau, c(m)) calculated from midi, eq. (4)
+
+        """
+        f = 440 * math.pow(2, (m - 69) / semitone_range)
         lag = sr / f
         return lag
 
     @staticmethod
-    def yingram_from_cmndf(cmndfs: torch.Tensor, ms: list, sr=22050) -> torch.Tensor:
+    def yingram_from_cmndf(cmndfs: torch.Tensor, ms: list, sr: int = 22050) -> torch.Tensor:
+        """ yingram calculator from cMNDFs(cumulative Mean Normalized Difference Functions)
+
+        Args:
+            cmndfs: torch.Tensor
+                calculated cumulative mean normalized difference function
+                for details, see models/yin.py or eq. (1) and (2)
+            ms: list of midi(int)
+            sr: sampling rate
+
+        Returns:
+            y:
+                calculated batch yingram
+
+
+        """
         c_ms = np.asarray([Pitch.midi_to_lag(m, sr) for m in ms])
         c_ms = torch.from_numpy(c_ms).to(cmndfs.device)
         c_ms_ceil = torch.ceil(c_ms).long().to(cmndfs.device)
@@ -110,7 +161,20 @@ class Pitch(torch.nn.Module):
         return y
 
     @staticmethod
-    def yingram(x: torch.Tensor, W=2048, tau_max=2048, sr=22050, w_step=256):
+    def yingram(x: torch.Tensor, W: int = 2048, tau_max: int = 2048, sr: int = 22050, w_step: int = 256):
+        """calculates yingram from raw audio (multi segment)
+
+        Args:
+            x: raw audio, torch.Tensor of shape (t)
+            W: yingram Window Size
+            tau_max:
+            sr: sampling rate
+            w_step: yingram bin step size
+
+        Returns:
+            yingram: yingram. torch.Tensor of shape (80 x t')
+
+        """
         # x.shape: t
         w_len = W
 
@@ -119,19 +183,30 @@ class Pitch(torch.nn.Module):
         # times = startFrames / sr
         frames = [x[..., t:t + W] for t in startFrames]
         frames_torch = torch.stack(frames, dim=0).to(x.device)
-        # frames = np.asarray(frames)
-        # frames_torch = torch.from_numpy(frames).to(x.device)
+
+        # If not using gpu, or torch not compatible, implemented numpy batch function is still fine
         dfs = differenceFunctionTorch(frames_torch, frames_torch.shape[-1], tau_max)
         cmndfs = cumulativeMeanNormalizedDifferenceFunctionTorch(dfs, tau_max)
-        yingram = Pitch.yingram_from_cmndf(cmndfs, list(range(5, 85)), sr)
+
+        midis = list(range(5, 85))
+        yingram = Pitch.yingram_from_cmndf(cmndfs, midis, sr)
         return yingram
 
     @staticmethod
-    def yingram_batch(x, W=2048, tau_max=2048, sr=22050, w_step=256):
-        """
+    def yingram_batch(x: torch.Tensor, W: int = 2048, tau_max: int = 2048, sr: int = 22050, w_step: int = 256):
+        """calculates yingram from batch raw audio.
+        currently calculates batch-wise through for loop, but seems it can be implemented to act batch-wise
 
-        params:
-            x.shape: B, n
+        Args:
+            x: torch.Tensor of shape (B x t)
+            W:
+            tau_max:
+            sr:
+            w_step:
+
+        Returns:
+            yingram: yingram. torch.Tensor of shape (B x 80 x t')
+
         """
         batch_results = []
         for i in range(len(x)):
@@ -143,7 +218,12 @@ class Pitch(torch.nn.Module):
 
 
 class Analysis(torch.nn.Module):
-    def __init__(self, conf):
+    def __init__(self, conf=None):
+        """joins all analysis modules into one
+
+        Args:
+            conf:
+        """
         super(Analysis, self).__init__()
         self.conf = conf
 
