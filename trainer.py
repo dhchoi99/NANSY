@@ -1,16 +1,14 @@
 import importlib
 
-hifigan = importlib.import_module('models.hifi-gan')
-hifigan_vocoder = getattr(hifigan, 'Generator')
-import json
-import os
-
+from omegaconf import OmegaConf
 import numpy as np
 import torch
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
 import transformers
 import pytorch_lightning as pl
+
+from models.hifi_gan import Generator as hifigan_vocoder
 
 MATPLOTLIB_FLAG = False
 
@@ -39,28 +37,12 @@ class Trainer(pl.LightningModule):
 
     def load_vocoder(self):
         path_config = './configs/hifi-gan/config.json'
-        with open(path_config) as f:
-            data = f.read()
-        json_config = json.loads(data)
-
-        class AttrDict(dict):
-            def __init__(self, *args, **kwargs):
-                super(AttrDict, self).__init__(*args, **kwargs)
-                self.__dict__ = self
-
-        hifigan_config = AttrDict(json_config)
+        hifigan_config = OmegaConf.load(path_config)
         self.vocoder = hifigan_vocoder(hifigan_config)
 
         path_ckpt = './configs/hifi-gan/generator_v1'
 
-        def load_checkpoint(filepath):
-            assert os.path.isfile(filepath)
-            print("Loading '{}'".format(filepath))
-            checkpoint_dict = torch.load(filepath)
-            print("Complete.")
-            return checkpoint_dict
-
-        state_dict_g = load_checkpoint(path_ckpt)
+        state_dict_g = torch.load(path_ckpt)
         self.vocoder.load_state_dict(state_dict_g['generator'])
         self.vocoder.eval()
         self.vocoder = self.vocoder.to(self.device)
