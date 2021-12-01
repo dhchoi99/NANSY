@@ -153,7 +153,9 @@ class CustomDataset(BaseDataset):
             y: torch.Tensor of shape (..., end-start)
         """
         if start < 0:
-            if end > x.shape[-1]:
+            if end < 0:
+                y = torch.ones(size=(*x.shape[:-1], end - start), dtype=torch.float, device=x.device) * padding_value
+            elif end > x.shape[-1]:
                 y = x
                 y = CustomDataset.pad_audio(y, -start, padding_value, pad_at='start')
                 y = CustomDataset.pad_audio(y, end - x.shape[-1], padding_value, pad_at='end')
@@ -161,8 +163,11 @@ class CustomDataset(BaseDataset):
                 y = x[..., :end]
                 y = CustomDataset.pad_audio(y, -start, padding_value, pad_at='start')
         elif end > x.shape[-1]:
-            y = x[..., start:]
-            y = CustomDataset.pad_audio(y, end - x.shape[-1], padding_value, pad_at='end')
+            if start > x.shape[-1]:
+                y = torch.ones(size=(*x.shape[:-1], end - start), dtype=torch.float, device=x.device) * padding_value
+            else:
+                y = x[..., start:]
+                y = CustomDataset.pad_audio(y, end - x.shape[-1], padding_value, pad_at='end')
         else:
             y = x[..., start:end]
         assert y.shape[-1] == end - start, f'{x.shape}, {start}, {end}, {y.shape}'
