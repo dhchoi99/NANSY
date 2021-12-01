@@ -43,7 +43,7 @@ class VCTKDataset(CustomDataset):
                     'wav_path_22k': wav_path_22k,
                     'wav_path_16k': wav_path_16k,
                     'text': txt,
-                    'timestamp': timestamps[file_id],
+                    # 'timestamp': timestamps[file_id],
                     'speaker_id': speaker_id,
                 }
                 data_list.append(data)

@@ -37,6 +37,19 @@ class CustomDataset(BaseDataset):
         self.yin_window_22k = self.audio_window_22k + self.w_len
         self.yin_segment_duration = self.yin_window_22k / 22050.
 
+        zero_audio = torch.zeros(44100).float()
+        zero_mel = utils.mel.mel_spectrogram(
+            zero_audio.unsqueeze(0),
+            self.conf.audio.n_fft,
+            self.conf.audio.num_mels,
+            self.conf.audio.sample_rate,
+            self.conf.audio.hop_size,
+            self.conf.audio.win_size,
+            self.conf.audio.fmin,
+            self.conf.audio.fmax
+        )
+        self.mel_padding_value = torch.min(zero_mel)
+
     # endregion
 
     def __len__(self):
@@ -88,7 +101,7 @@ class CustomDataset(BaseDataset):
         except Exception as e:
             _, wav_torch = self.load_wav(path_audio, sr=sr)
             mel = utils.mel.mel_spectrogram(
-                wav_torch.unsqueeze(0),
+                wav_torch.unsqueeze(0),  # 1 x t
                 self.conf.audio.n_fft,
                 self.conf.audio.num_mels,
                 self.conf.audio.sample_rate,
@@ -227,7 +240,7 @@ class CustomDataset(BaseDataset):
 
         pos_time_idxs = self.get_time_idxs(mel_22k.shape[-1])
 
-        mel_22k = self.crop_audio(mel_22k, pos_time_idxs[0], pos_time_idxs[1], padding_value=-4)
+        mel_22k = self.crop_audio(mel_22k, pos_time_idxs[0], pos_time_idxs[1], padding_value=-self.mel_padding_value)
         return_data['gt_mel_22k'] = mel_22k
 
         assert pos_time_idxs[3] <= wav_16k_torch.shape[-1], '16k_1'
