@@ -1,7 +1,3 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-
 import argparse
 from collections import OrderedDict
 
@@ -55,6 +51,9 @@ def parse_args():
     parser.add_argument('--tsa_loop', type=int, default=100,
                         help='iterations for tsa')
 
+    parser.add_argument('--device', type=str, default='cuda',
+                        help='')
+
     args = parser.parse_args()
     return args
 
@@ -67,35 +66,6 @@ def main():
     # path_audio_target = '/raid/vision/dhchoi/temp/DS2632_00322.wav'
     # tsa_loop = 100
 
-    data_ckpt = torch.load(args.path_ckpt, map_location='cpu')
-    state_dict = data_ckpt['state_dict']
-
-    new_state_dict = pl_checkpoint_to_torch_checkpoints(state_dict)
-
-    synthesis = Synthesis(None)
-    analysis = Analysis(None)
-
-    analysis.load_state_dict(new_state_dict['Analysis'])
-    synthesis.load_state_dict(new_state_dict['Synthesis'])
-
-    analysis.cuda(1).eval()
-    synthesis.cuda(1).eval()
-
-    # for param in analysis.parameters():
-    #     param.requires_grad = False
-    #
-    # for key, param in synthesis.named_parameters():
-    #     if key.startswith('filter_generator'):
-    #         param.requires_grad = True
-    #     else:
-    #         param.requires_grad = False
-
-    networks = {'Analysis': analysis, 'Synthesis': synthesis}
-
-    tsa_helper = TSAHelper().cuda(1)
-    print(tsa_helper.embedding)
-    opt = torch.optim.Adam(tsa_helper.parameters(), lr=1e-4, betas=(0.5, 0.9))
-
     conf_audio = OmegaConf.load(args.path_audio_conf)
     conf = DictConfig({'audio': conf_audio})
 
@@ -105,67 +75,108 @@ def main():
     _, wav_16k_target = self.load_wav(args.path_audio_target, 16000)
     mel_22k = self.load_mel(args.path_audio_source, sr=22050)
 
-    return_data = {}
+    data_ckpt = torch.load(args.path_ckpt, map_location='cpu')
+    state_dict = data_ckpt['state_dict']
+    new_state_dict = pl_checkpoint_to_torch_checkpoints(state_dict)
+
+    analysis = Analysis(None)
+    analysis.load_state_dict(new_state_dict['Analysis'])
+    analysis.to(args.device).eval()
+
+    synthesis = Synthesis(None)
+    synthesis.load_state_dict(new_state_dict['Synthesis'])
+    synthesis.to(args.device).eval()
+
+    networks = {'Analysis': analysis, 'Synthesis': synthesis}
+
+    tsa_helper = TSAHelper().to(args.device)
+    print(tsa_helper.embedding)
+    opt = torch.optim.Adam(tsa_helper.parameters(), lr=1e-4, betas=(0.5, 0.9))
+
+    def loader_helper(mel_start):
+        pos_time_idxs = self.get_time_idxs(mel_start)
+        print(pos_time_idxs)
+        # wav_16k_source
+        gt_audio_f = self.crop_audio(wav_16k_source, pos_time_idxs[3], pos_time_idxs[5])
+
+        return_data['gt_audio_16k_f'] = gt_audio_f
+
+        # wav_16k_target
+        gt_audio_16k = self.crop_audio(wav_16k_target, pos_time_idxs[3], pos_time_idxs[5])
+        return_data['gt_audio_16k'] = gt_audio_16k
+
+        # mel_22k_source
+        gt_mel_22k = self.crop_audio(mel_22k, pos_time_idxs[0], pos_time_idxs[1], padding_value=-self.mel_padding_value)
+        return_data['gt_mel_22k'] = gt_mel_22k
+
+        # wav_22k_source
+        gt_audio_g = self.crop_audio(wav_22k_source, pos_time_idxs[4], pos_time_idxs[7])
+        return_data['gt_audio_22k_g'] = gt_audio_g
+
+        return return_data
 
     audios = {
         'gt_source': [],
         'gt_target': [],
         'gen_source': [],
+        'gen_source_down': [],
+        'gen_source_up': [],
         'gen_target': [],
         'gen_source_tsa': [],
         'gen_target_tsa': [],
     }
 
     for idx in trange(0, mel_22k.shape[-1], self.mel_window):
+        return_data = {}
         mel_start = idx
-        pos_time_idxs = self.get_time_idxs(mel_start)
-
-        gt_mel_22k = self.crop_audio(mel_22k, pos_time_idxs[0], pos_time_idxs[1], -self.mel_padding_value)
-
-        source_16k = self.crop_audio(wav_16k_source, pos_time_idxs[3], pos_time_idxs[5])
-        target_16k = self.crop_audio(wav_16k_target, pos_time_idxs[3], pos_time_idxs[5])
-        source_22k = self.crop_audio(wav_22k_source, pos_time_idxs[4], pos_time_idxs[6])
-        source_22k_yin = self.crop_audio(wav_22k_source, pos_time_idxs[4], pos_time_idxs[7])
-
-        return_data['source_22k'] = source_22k
-        return_data['source_16k'] = source_16k
-
-        return_data['target_16k'] = target_16k
-
-        return_data['source_22k_yin'] = source_22k_yin
-        return_data['source_22k_mel'] = gt_mel_22k
+        return_data = loader_helper(mel_start)
 
         batch = {key: value.unsqueeze(0).cuda(1) for key, value in return_data.items()}
 
-        audios['gt_source'].append(batch['source_22k'][0].cpu().numpy())
-        audios['gt_target'].append(batch['target_16k'][0].cpu().numpy())
+        # gt audio
+        audios['gt_source'].append(batch['gt_audio_16k_f'][0].cpu().numpy())
+        audios['gt_target'].append(batch['gt_audio_16k'][0].cpu().numpy())
 
+        # analysis step
         with torch.no_grad():
-            lps = networks['Analysis'].linguistic(batch['source_16k'])
-            s_src = networks['Analysis'].speaker(batch['source_16k'])
-            s_tgt = networks['Analysis'].speaker(batch['target_16k'])
-            e = networks['Analysis'].energy(batch['source_22k_mel'])
-            ps = networks['Analysis'].pitch.yingram_batch(batch['source_22k'])
-            ps = ps[:, 19:69]
+            lps = networks['Analysis'].linguistic(batch['gt_audio_16k_f'])
+            s_src = networks['Analysis'].speaker(batch['gt_audio_16k_f'])
+            s_tgt = networks['Analysis'].speaker(batch['gt_audio_16k'])
+            e = networks['Analysis'].energy(batch['gt_mel_22k'])
+            ps_raw = networks['Analysis'].pitch.yingram_batch(batch['gt_audio_22k_g'])
+            ps = ps_raw[:, 19:69]
+            ps_up = ps_raw[:, 25:75]
+            ps_down = ps_raw[:, 14:64]
 
+        # reconstructed source
         with torch.no_grad():
             result = networks['Synthesis'](lps, s_src, e, ps)
             audios['gen_source'].append(result['audio_gen'][0].cpu().numpy())
 
+        # yingram manipulation
+        with torch.no_grad():
+            result = networks['Synthesis'](lps, s_src, e, ps_down)
+            audios['gen_source_down'].append(result['audio_gen'][0].cpu().numpy())
+            result = networks['Synthesis'](lps, s_src, e, ps_up)
+            audios['gen_source_up'].append(result['audio_gen'][0].cpu().numpy())
+
+        # VC, source -> target
         with torch.no_grad():
             result = networks['Synthesis'](lps, s_tgt, e, ps)
             audios['gen_target'].append(result['audio_gen'][0].cpu().numpy())
 
-        for i in range(args.tsa_loop):  # test time self adaptation
+        # test time self adaptation
+        for i in range(args.tsa_loop):
             lps_tsa = lps.detach().clone()
             lps_tsa = tsa_helper(lps_tsa)
-            result = networks['Synthesis'](lps_tsa, s_src, e, ps)
+            result = networks['Synthesis'](lps_tsa, s_src.clone().detach(), e, ps)
 
             opt.zero_grad()
-            loss_mel = torch.nn.functional.l1_loss(batch['source_22k_mel'], result['gen_mel'])
+            loss_mel = torch.nn.functional.l1_loss(batch['gt_mel_22k'], result['gen_mel'])
             loss_mel.backward()
             opt.step()
 
+        # TSA-generated audio
         with torch.no_grad():
             lps = tsa_helper(lps)
             result = networks['Synthesis'](lps, s_src, e, ps)
