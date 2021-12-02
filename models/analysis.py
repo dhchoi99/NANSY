@@ -82,6 +82,7 @@ class Speaker(torch.nn.Module):
         y = outputs.hidden_states[12]  # B x t x C(1024)
         y = y.permute((0, 2, 1))  # B x t x C -> B x C x t
         y = self.spk(y)  # B x C(1024) x t -> B x D(192)
+        y = torch.nn.functional.normalize(y, p=2, dim=-1)
         return y
 
     def train(self, mode: bool = True):
