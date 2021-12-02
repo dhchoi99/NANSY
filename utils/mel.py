@@ -25,8 +25,8 @@ def dynamic_range_decompression(x, C=1):
 
 
 def dynamic_range_compression_torch(x, C=1, clip_val=1e-5):
-    # return torch.log(torch.clamp(x, min=clip_val) * C)
-    return torch.clamp(x, min=clip_val) * C
+    return torch.log(torch.clamp(x, min=clip_val) * C)
+    # return torch.clamp(x, min=clip_val) * C
 
 
 def dynamic_range_decompression_torch(x, C=1):

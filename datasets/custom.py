@@ -252,7 +252,7 @@ class CustomDataset(BaseDataset):
 
         mel_22k = self.crop_audio(mel_22k, pos_time_idxs[0], pos_time_idxs[1], padding_value=self.mel_padding_value)
         return_data['gt_mel_22k'] = mel_22k
-        return_data['gt_log_mel_22k'] = torch.log(mel_22k)
+        return_data['gt_log_mel_22k'] = mel_22k
 
         assert pos_time_idxs[3] <= wav_16k_torch.shape[-1], '16k_1'
         wav_16k = self.crop_audio(wav_16k_torch, pos_time_idxs[3], pos_time_idxs[5])
