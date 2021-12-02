@@ -1,0 +1,68 @@
+<div>
+    <h1>Demo page for NANSY</h1>
+    <span>
+        Unofficial Pytorch Implementation of
+        <a href="https://arxiv.org/pdf/2110.14513.pdf">Neural Analysis and Synthesis: Reconstructing Speech from Self-Supervised Representations</a>
+    </span>
+</div>
+<div>
+    <span>NANSY</span>
+    <div>
+        <details>
+            <summary>Information perturbation</summary>
+            <img src="./src/image/information_flow_final.jpg">
+            <ul>
+                <details>
+                    <summary>Original waveform</summary>
+                    <img src="./src/image/original.png">
+                    <audio controls src="./src/audio/original.wav">Original</audio>
+                </details>
+                <details>
+                    <summary>After f perturbation</summary>
+                    <img src="./src/image/after_f.png">
+                    <audio controls src="./src/audio/after_f.wav"></audio>
+                </details>
+                <details>
+                    <summary>After g perturbation</summary>
+                    <img src="./src/image/after_g.png">
+                    <audio controls src="./src/audio/after_g.wav"></audio>
+                </details>
+                <details>
+                    <summary>Formant shift</summary>
+                    Formant shift from 1/(1.8~1) + (1~1.8)
+                    <img src="./src/image/formant.gif">
+                </details>
+                <details>
+                    <summary>Pitch shift</summary>
+                    Pitch shft from 0 ~ 12 (bins_per_octavei=12)
+                    <img src="./src/image/pitch.gif">
+                </details>
+                <details>
+                    <summary>Parametric Equalizer(PEQ)</summary>
+                    <img src="./src/image/peq.png">
+                    <audio controls src="./src/audio/peq.wav"></audio>
+                </details>
+            </ul>
+        </details>
+    </div>
+    <div>
+        <details>
+            <summary>Interpretable generation</summary>
+            <img src="">
+            <ul>
+            	<details>
+            		<summary>Reconstructed Source Speech</summary>
+            	</details>
+            	<details>
+            		<summary>Reconstructed Target Speech</summary>
+            	</details>
+            	<details>
+            		<summary>Converted Speech</summary>
+            	</details>
+            </ul>
+        </details>
+    </div>
+    <div>
+        Voice conversion
+    </div>
+</div>
