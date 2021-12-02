@@ -1,7 +1,8 @@
 import importlib
 
-from omegaconf import OmegaConf
+import matplotlib.pylab as plt
 import numpy as np
+from omegaconf import OmegaConf
 import torch
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
@@ -23,31 +24,6 @@ class Trainer(pl.LightningModule):
         self.opt_tag = {key: None for key in self.networks.keys()}
 
         self.losses = self.build_losses()
-
-        # self.load_wav2vec2()
-        # self.load_vocoder()
-
-    def load_wav2vec2(self):
-        self.wav2vec2 = transformers.Wav2Vec2ForPreTraining.from_pretrained(
-            "facebook/wav2vec2-large-xlsr-53")
-        self.wav2vec2.eval()
-        self.wav2vec2 = self.wav2vec2.to(self.device)
-        for param in self.wav2vec2.parameters():
-            param.requires_grad = False
-
-    def load_vocoder(self):
-        path_config = './configs/hifi-gan/UNIVERSAL_V1/config.json'
-        hifigan_config = OmegaConf.load(path_config)
-        self.vocoder = hifigan_vocoder(hifigan_config)
-
-        path_ckpt = './configs/hifi-gan/UNIVERSAL_V1/g_02500000'
-
-        state_dict_g = torch.load(path_ckpt)
-        self.vocoder.load_state_dict(state_dict_g['generator'])
-        self.vocoder.eval()
-        self.vocoder = self.vocoder.to(self.device)
-        for param in self.vocoder.parameters():
-            param.requires_grad = False
 
     def train_dataloader(self):
         conf_dataset = self.conf.datasets['train']
@@ -236,8 +212,6 @@ class Trainer(pl.LightningModule):
             import matplotlib
             matplotlib.use("Agg")
             MATPLOTLIB_FLAG = True
-        import matplotlib.pylab as plt
-        import numpy as np
 
         fig, ax = plt.subplots(figsize=(10, 2))
         im = ax.imshow(spectrogram, aspect="auto", origin="lower",

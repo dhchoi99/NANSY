@@ -49,6 +49,7 @@ class CustomDataset(BaseDataset):
             self.conf.audio.fmax
         )
         self.mel_padding_value = torch.min(zero_mel)
+        self.mel_padding_value = 1e-5
 
     # endregion
 
@@ -95,7 +96,7 @@ class CustomDataset(BaseDataset):
         returns:
             mel: torch.Tensor of shape (C x T)
         """
-        mel_path = path_audio + '.kwkim.mel'
+        mel_path = path_audio + '.linear.mel'
         try:
             mel = torch.load(mel_path, map_location='cpu')
         except Exception as e:
@@ -249,9 +250,9 @@ class CustomDataset(BaseDataset):
         mel_start = self.get_random_start_time(mel_22k.shape[-1])
         pos_time_idxs = self.get_time_idxs(mel_start)
 
-        mel_22k = self.crop_audio(mel_22k, pos_time_idxs[0], pos_time_idxs[1], padding_value=-self.mel_padding_value)
-        return_data['gt_log_mel_22k'] = mel_22k
-        return_data['gt_mel_22k'] = torch.exp(mel_22k)
+        mel_22k = self.crop_audio(mel_22k, pos_time_idxs[0], pos_time_idxs[1], padding_value=self.mel_padding_value)
+        return_data['gt_mel_22k'] = mel_22k
+        return_data['gt_log_mel_22k'] = torch.log(mel_22k)
 
         assert pos_time_idxs[3] <= wav_16k_torch.shape[-1], '16k_1'
         wav_16k = self.crop_audio(wav_16k_torch, pos_time_idxs[3], pos_time_idxs[5])

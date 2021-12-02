@@ -106,7 +106,7 @@ def main():
         return_data['gt_audio_16k'] = gt_audio_16k
 
         # mel_22k_source
-        gt_mel_22k = self.crop_audio(mel_22k, pos_time_idxs[0], pos_time_idxs[1], padding_value=-self.mel_padding_value)
+        gt_mel_22k = self.crop_audio(mel_22k, pos_time_idxs[0], pos_time_idxs[1], padding_value=self.mel_padding_value)
         return_data['gt_mel_22k'] = gt_mel_22k
 
         # wav_22k_source
