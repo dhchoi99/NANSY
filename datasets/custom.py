@@ -49,7 +49,6 @@ class CustomDataset(BaseDataset):
             self.conf.audio.fmax
         )
         self.mel_padding_value = torch.min(zero_mel)
-        self.mel_padding_value = 1e-5
 
     # endregion
 
