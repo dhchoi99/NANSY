@@ -131,15 +131,7 @@ class Trainer(pl.LightningModule):
         logs = {}
         logs.update(batch)
 
-        logs['lps'] = self.networks['Analysis'].linguistic(batch['gt_audio_f'])
-        # with torch.no_grad():
-        # wav2vec2_output = self.wav2vec(batch['gt_audio_f'], output_hidden_states=True)
-        # logs['lps'] = wav2vec2_output.hidden_states[1].permute((0, 2, 1))  # B x C x t
-
-        # wav2vec2_output = self.wav2vec2(batch['gt_audio_16k'], output_hidden_states=True)
-        # s_pos_pre = wav2vec2_output.hidden_states[12].permute((0, 2, 1))  # B x C x t
-        # wav2vec2_output = self.wav2vec2(batch['gt_audio_16k_negative'], output_hidden_states=True)
-        # s_neg_pre = wav2vec2_output.hidden_states[12].permute((0, 2, 1))  # B x C x t
+        logs['lps'] = self.networks['Analysis'].linguistic(batch['gt_audio_16k_f'])
 
         logs['s_pos'] = self.networks['Analysis'].speaker(batch['gt_audio_16k'])
         logs['s_neg'] = self.networks['Analysis'].speaker(batch['gt_audio_16k_negative'])
@@ -147,8 +139,8 @@ class Trainer(pl.LightningModule):
         # logs['s_neg'] = self.networks['Analysis'].speaker(s_neg_pre)
 
         with torch.no_grad():
-            logs['e'] = self.networks['Analysis'].energy(batch['gt_mel_22k'])
-            logs['ps'] = self.networks['Analysis'].pitch.yingram_batch(batch['gt_audio_g'])
+            logs['e'] = self.networks['Analysis'].energy(batch['gt_log_mel_22k'])
+            logs['ps'] = self.networks['Analysis'].pitch.yingram_batch(batch['gt_audio_22k_g'])
             logs['ps'] = logs['ps'][:, 19:69]
 
         result = self.networks['Synthesis'](logs['lps'], logs['s_pos'], logs['e'], logs['ps'])
