@@ -36,19 +36,19 @@ We provide both pretrained checkpoint of Discriminator network and inference cod
 
 ### Docker
 
-if using cu113 compatible environment, use [Dockerfile](./Dockerfile)  
-if using cu102 compatible environment, use [Dockerfile-cu102](./Dockerfile_cu102)
+If using cu113 compatible environment, use [Dockerfile](./Dockerfile)  
+If using cu102 compatible environment, use [Dockerfile-cu102](./Dockerfile_cu102)
 
 `docker build -f Dockerfile -t nansy:v0.0 .`
 
 Then,  
 `docker-compose -f docker-compose.yml run --service-ports --name CONTAINER_NAME nansy_container bash`  
 or  
-[`bash docker_run_script.sh`]('./docker_run_script.sh)
+[`bash docker_run_script.sh`](./docker_run_script.sh)
 
 ### Pretrained hifi-gan
 
-download pretrained hifi-gan config and checkpoint  
+Download pretrained hifi-gan config and checkpoint  
 from [hifi-gan](https://github.com/jik876/hifi-gan)
 to `./configs/hifi-gan/UNIVERSAL_V1`
 
@@ -143,8 +143,25 @@ datasets:
 ##### Dataset Config
 
 Dataset configs are at `./configs/datasets/`.  
-You might want to replace `/raid/vision/dhchoi/data` to `YOUR_PATH_DO_DATA`, especially at `path` section.   
-TODO
+You might want to replace `/raid/vision/dhchoi/data` to `YOUR_PATH_DO_DATA`, especially at `path` section.
+
+```yaml
+class: datasets.vctk.VCTKDataset # implemented Dataset class name
+load:
+  audio: 'configs/audio/22k.yaml'
+
+path:
+  root: /raid/vision/dhchoi/data/
+  wav22: /raid/vision/dhchoi/data/VCTK-Corpus/wav22
+  wav16: /raid/vision/dhchoi/data/VCTK-Corpus/wav16
+  txt: /raid/vision/dhchoi/data/VCTK-Corpus/txt
+  timestamp: ./vctk-silence-labels/vctk-silences.0.92.txt
+
+  configs:
+    train: /raid/vision/dhchoi/data/VCTK-Corpus/vctk_22k_train.txt
+    eval: /raid/vision/dhchoi/data/VCTK-Corpus/vctk_22k_val.txt
+    test: /raid/vision/dhchoi/data/VCTK-Corpus/vctk_22k_test.txt
+```
 
 #### Model Settings
 
@@ -223,7 +240,7 @@ logging:
 
 During training, tensorboard logger logs loss, spectrogram and audio.
 
-`tensorboardd --logdir YOUR_LOG_DIR_AT_CONFIG/YOUR_SEED --bind_all`
+`tensorboard --logdir YOUR_LOG_DIR_AT_CONFIG/YOUR_SEED --bind_all`
 ![]('./docs/tensorboard.png)
 
 ## Inference
@@ -258,12 +275,14 @@ TODO
 
 ## License
 
+NEEDS WORK
+
+BSD 3-Clause License.
+
 * `model/hifi_gan.py`, `utils.mel.py`, pretrained checkpoints from https://github.com/jik876/hifi-gan (MIT License)
 * [Wav2Vec2](https://github.com/pytorch/fairseq/tree/main/examples/wav2vec#wav2vec-20) (MIT License) pretrained
-  checkpoint from  
+  checkpoint from
   [HuggingFace](https://huggingface.co/facebook/wav2vec2-large-xlsr-53) (Apache License 2.0)
-
-NEEDS WORK
 
 ## References
 
@@ -286,8 +305,12 @@ Provided Checkpoints are trained from:
 
 ## Special Thanks
 
-[MINDs Lab](https://maum.ai/) for GPU support
+[MINDsLab Inc.](https://maum.ai/) for GPU support
 
-- [Junhyeok Lee](https://github.com/junjun3518) @ MINDs Lab
-- [Seungu Han](https://github.com/Seungwoo0326) @ MINDs Lab
-- [Kang-wook Kim](https://github.com/wookladin) @ MINDs Lab 
+Special Thanks to:
+
+- [Junhyeok Lee](https://github.com/junjun3518) @ [MINDsLab Inc.](https://maum.ai/)
+- [Seungu Han](https://github.com/Seungwoo0326) @ [MINDsLab Inc.](https://maum.ai/)
+- [Kang-wook Kim](https://github.com/wookladin) @ [MINDsLab Inc.](https://maum.ai/)
+
+for help with Audio-domain knowledge
