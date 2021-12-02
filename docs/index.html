@@ -4,65 +4,197 @@
         Unofficial Pytorch Implementation of
         <a href="https://arxiv.org/pdf/2110.14513.pdf">Neural Analysis and Synthesis: Reconstructing Speech from Self-Supervised Representations</a>
     </span>
+    <br>
 </div>
 <div>
-    <span>NANSY</span>
-    <div>
-        <details>
-            <summary>Information perturbation</summary>
-            <img src="./src/image/information_flow_final.jpg">
-            <ul>
-                <details>
-                    <summary>Original waveform</summary>
-                    <img src="./src/image/original.png">
-                    <audio controls src="./src/audio/original.wav">Original</audio>
-                </details>
-                <details>
-                    <summary>After f perturbation</summary>
-                    <img src="./src/image/after_f.png">
-                    <audio controls src="./src/audio/after_f.wav"></audio>
-                </details>
-                <details>
-                    <summary>After g perturbation</summary>
-                    <img src="./src/image/after_g.png">
-                    <audio controls src="./src/audio/after_g.wav"></audio>
-                </details>
-                <details>
-                    <summary>Formant shift</summary>
-                    Formant shift from 1/(1.8~1) + (1~1.8)
-                    <img src="./src/image/formant.gif">
-                </details>
-                <details>
-                    <summary>Pitch shift</summary>
-                    Pitch shft from 0 ~ 12 (bins_per_octavei=12)
-                    <img src="./src/image/pitch.gif">
-                </details>
-                <details>
-                    <summary>Parametric Equalizer(PEQ)</summary>
-                    <img src="./src/image/peq.png">
-                    <audio controls src="./src/audio/peq.wav"></audio>
-                </details>
-            </ul>
-        </details>
-    </div>
-    <div>
-        <details>
-            <summary>Interpretable generation</summary>
-            <img src="">
-            <ul>
-            	<details>
-            		<summary>Reconstructed Source Speech</summary>
-            	</details>
-            	<details>
-            		<summary>Reconstructed Target Speech</summary>
-            	</details>
-            	<details>
-            		<summary>Converted Speech</summary>
-            	</details>
-            </ul>
-        </details>
-    </div>
-    <div>
-        Voice conversion
-    </div>
+    <h2>NANSY</h2>
+    <ul>
+        <div>
+            <details>
+                <summary>Information perturbation</summary><br>
+                <img src="./src/image/information_flow_final.jpg"><br>
+                <ul>
+                    <details>
+                        <summary>Original waveform</summary>
+                        <img src="./src/image/original.png"><br>
+                        <audio controls src="./src/audio/original.wav">Original</audio><br>
+                    </details>
+                    <details>
+                        <summary>After f perturbation</summary>
+                        <img src="./src/image/after_f.png"><br>
+                        <audio controls src="./src/audio/after_f.wav"></audio><br>
+                    </details>
+                    <details>
+                        <summary>After g perturbation</summary><br>
+                        <img src="./src/image/after_g.png"><br>
+                        <audio controls src="./src/audio/after_g.wav"></audio><br>
+                    </details>
+                    <details>
+                        <summary>Formant shift</summary><br>
+                        Formant shift from 1/range(1.8~1) + range(1~1.8)<br>
+                        <img src="./src/image/formant.gif"><br>
+                    </details>
+                    <details>
+                        <summary>Pitch shift</summary><br>
+                        Pitch shft from 0 ~ 12 (bins_per_octave=12)<br>
+                        <img src="./src/image/pitch.gif"><br>
+                    </details>
+                    <details>
+                        <summary>Parametric Equalizer(PEQ)</summary><br>
+                        <img src="./src/image/peq.png"><br>
+                        <audio controls src="./src/audio/peq.wav"></audio><br>
+                    </details>
+                </ul>
+            </details>
+        </div>
+        <div>
+            <details>
+                <summary>Interpretable generation</summary><br>
+                <img src=""><br>
+                <ul>
+                    <details>
+                        <summary>Reconstructed Source Speech</summary>
+                        <div style="display: flex;">
+                            <div>
+                                Original Source<br>
+                                <audio controls src=""></audio>
+                            </div>
+                            <div style="padding: 0 20 0 20;"></div>
+                            <div>
+                                Reconstructed Source<br>
+                                <audio controls src=""></audio>
+                            </div>
+                        </div><br>
+                    </details>
+                    <details>
+                        <summary>Reconstructed Target Speech</summary>
+                        <div style="display: flex;">
+                            <div>
+                                Original Target<br>
+                                <audio controls src=""></audio>
+                            </div>
+                            <div style="padding: 0 20 0 20;"></div>
+                            <div>
+                                Reconstructed Target<br>
+                                <audio controls src=""></audio>
+                            </div>
+                        </div><br>
+                    </details>
+                    <details>
+                        <summary>Converted Speech</summary>
+                        <div style="display: flex;">
+                            <div>
+                                Converted 1<br>
+                                <audio controls src=""></audio>
+                            </div>
+                            <div style="padding: 0 20 0 20;"></div>
+                            <div>
+                                Converted 2<br>
+                                <audio controls src=""></audio>
+                            </div>
+                        </div><br>
+                    </details>
+                </ul>
+            </details>
+        </div>
+        <div>
+            <details>
+                <summary>Voice conversion</summary>
+                <img src=""><br>
+                <ul>
+                    <div>
+                        <details>
+                            <summary>English voice conversion</summary>
+                            The model is trained using English-only datasets (VCTK + LibriTTS-train-clean-360)<br>
+                            <ul>
+                                <details>
+                                    <summary>Seen(Many) to Seen(Many)</summary>
+                                </details>
+                                <details>
+                                    <summary>Unseen(Any) to Seen(Many)</summary>
+                                </details>
+                                <details>
+                                    <summary>Unseen(Any) to Unseen(Any)</summary>
+                                </details>
+                            </ul>
+                        </details>
+                        <details>
+                            <summary>Multilingual voice conversion</summary>
+                            <ul>
+                                <details>
+                                    <summary>Seen Language(Many) to Seen Language(Many)</summary>
+                                    The model is trained using only CSS10 dataset.<br>
+                                </details>
+                                <details>
+                                    <summary>Unseen Language to Seen Language</summary>
+                                    The model is trained using English-only datasets (VCTK + LibriTTS-train-clean-360)<br>
+                                </details>
+                                <details>
+                                    <summary>Unseen Language to Unseen Language</summary>
+                                    The model is trained using English-only datasets (VCTK + LibriTTS-train-clean-360)<br>
+                                </details>
+                            </ul>
+                        </details>
+                        <details>
+                            <summary>Something fun!</summary>
+                        </details>
+                    </div>
+                </ul>
+            </details>
+        </div>
+        <div>
+            <details>
+                <summary>Pitch shift</summary>
+                NANSY can perform formant-preserving pitch shift by shifting the scope of Yingram.
+                <img src=""><br>
+                <img src=""><br>
+                Semitones
+                <ul>
+                    <details>
+                        <summary></summary>
+                        <div style="display: flex;">
+                            <div>
+                                Original<br>
+                                <audio controls src=""></audio>
+                            </div>
+                            <div style="padding: 0 20 0 20;"></div>
+                            <div>
+                                Nansy<br>
+                                <audio controls src=""></audio>
+                            </div>
+                        </div>
+                    </details>
+                </ul>
+            </details>
+        </div>
+        <div>
+            <details>
+                <summary>Time scale modification</summary>
+                <img src=""><br>
+                Ratios
+                <ul>
+                    <details>
+                        <summary></summary>
+                        <div style="display: flex;">
+                            <div>
+                                Original<br>
+                                <audio controls src=""></audio>
+                            </div>
+                            <div style="padding: 0 20 0 20;"></div>
+                            <div>
+                                Nansy<br>
+                                <audio controls src=""></audio>
+                            </div>
+                        </div>
+                    </details>
+                </ul>
+            </details>
+        </div>
+        <div>
+            <details>
+                <summary>Yingram vs F0</summary>
+                Not Done Yet!
+            </details>
+        </div>
+    </ul>
 </div>
