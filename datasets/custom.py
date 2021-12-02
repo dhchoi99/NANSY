@@ -255,14 +255,14 @@ class CustomDataset(BaseDataset):
 
         assert pos_time_idxs[3] <= wav_16k_torch.shape[-1], '16k_1'
         wav_16k = self.crop_audio(wav_16k_torch, pos_time_idxs[3], pos_time_idxs[5])
-        return_data['gt_audio_f'] = f(wav_16k, sr=16000)
+        return_data['gt_audio_16k_f'] = f(wav_16k, sr=16000)
         return_data['gt_audio_16k'] = wav_16k
 
         assert pos_time_idxs[4] <= wav_22k_torch.shape[-1], '22k_1'
         wav_22k = self.crop_audio(wav_22k_torch, pos_time_idxs[4], pos_time_idxs[6])
         wav_22k_yin = self.crop_audio(wav_22k_torch, pos_time_idxs[4], pos_time_idxs[7])
         return_data['gt_audio_22k'] = wav_22k
-        return_data['gt_audio_g'] = g(wav_22k_yin, sr=22050)
+        return_data['gt_audio_22k_g'] = g(wav_22k_yin, sr=22050)
 
         return return_data
 
