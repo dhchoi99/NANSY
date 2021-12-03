@@ -76,7 +76,7 @@ Datasets used when training are:
     * CSS10: A Collection of Single Speaker Speech Datasets for 10 Languages
     * https://github.com/Kyubyong/css10
 
-### Custom Datasets:
+### Custom Datasets
 
 Write your own code!  
 If inheriting `datasets.custom.CustomDataset`, `self.data` should be as:
@@ -205,6 +205,9 @@ models:
 
 #### Logging & Pytorch-lightning settings
 
+For pytorch-lightning configs in section `pl`, check
+[official docs](https://pytorch-lightning.readthedocs.io/en/latest/)
+
 ```yaml
 pl:
   checkpoint:
@@ -302,7 +305,7 @@ BSD 3-Clause License.
 
 * `model/hifi_gan.py`, `utils.mel.py`, pretrained checkpoints from https://github.com/jik876/hifi-gan (MIT License)
 * [Wav2Vec2](https://github.com/pytorch/fairseq/tree/main/examples/wav2vec#wav2vec-20) (MIT License) pretrained
-  checkpoint from
+  checkpoint ported to
   [HuggingFace](https://huggingface.co/facebook/wav2vec2-large-xlsr-53) (Apache License 2.0)
 
 ## References
