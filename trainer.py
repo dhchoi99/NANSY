@@ -129,7 +129,7 @@ class Trainer(pl.LightningModule):
         if 'Discriminator' in self.networks.keys():
             pred_gen = self.networks['Discriminator'](logs['gen_mel'], logs['s_pos'], logs['s_neg'])
             # loss['D_gen_forG'] = self.losses['BCE'](pred_gen, torch.ones_like(pred_gen))
-            loss['D_gen_forG'] = torch.mean(torch.sigmoid(pred_gen))
+            loss['D_gen_forG'] = torch.mean(torch.sigmoid(pred_gen)) # 0=gt, 1=gen
             loss['backward'] = loss['backward'] + loss['D_gen_forG']
 
         # for D

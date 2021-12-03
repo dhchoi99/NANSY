@@ -60,11 +60,6 @@ def parse_args():
 
 def main():
     args = parse_args()
-    # path_audio_conf = 'configs/audio/22k.yaml'
-    # path_ckpt = '/raid/vision/dhchoi/log/nansy/31/checkpoints/epoch=33-step=154708.ckpt'
-    # path_audio_source = '/raid/vision/dhchoi/data/VCTK-Corpus/wav22/p376/p376_293-22k.wav'
-    # path_audio_target = '/raid/vision/dhchoi/temp/DS2632_00322.wav'
-    # tsa_loop = 100
 
     conf_audio = OmegaConf.load(args.path_audio_conf)
     conf = DictConfig({'audio': conf_audio})
@@ -131,7 +126,7 @@ def main():
         mel_start = idx
         return_data = loader_helper(mel_start)
 
-        batch = {key: value.unsqueeze(0).cuda(1) for key, value in return_data.items()}
+        batch = {key: value.unsqueeze(0).to(args.device) for key, value in return_data.items()}
 
         # gt audio
         audios['gt_source'].append(batch['gt_audio_16k_f'][0].cpu().numpy())

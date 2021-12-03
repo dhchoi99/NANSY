@@ -241,7 +241,7 @@ logging:
 During training, tensorboard logger logs loss, spectrogram and audio.
 
 `tensorboard --logdir YOUR_LOG_DIR_AT_CONFIG/YOUR_SEED --bind_all`
-![]('./docs/tensorboard.png)
+![]('./docs/src/image/tensorboard.png)
 
 ## Inference
 
@@ -271,7 +271,23 @@ return args
 
 ### Discriminator
 
-TODO
+Note that 0=gt, 1=gen
+
+`python classify.py` or `bash classify.sh`
+
+```python
+parser = argparse.ArgumentParser()
+parser.add_argument('--path_audio_conf', type=str, default='configs/audio/22k.yaml',
+                    help='')
+parser.add_argument('--path_ckpt', type=str, required=True,
+                    help='path to pl checkpoint')
+parser.add_argument('--path_audio_gt', type=str, required=True,
+                    help='path to audio with same speaker')
+parser.add_argument('--path_audio_gen', type=str, required=True,
+                    help='path to generated audio ')
+parser.add_argument('--device', type=str, default='cuda')
+args = parser.parse_args()
+```
 
 ## License
 
