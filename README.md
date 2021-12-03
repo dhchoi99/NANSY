@@ -171,7 +171,7 @@ path:
 #### Model Settings
 
 * Comment out or Delete `Discriminator` section if no Discriminator needed.
-* Adjust `lr` and `betas`, optimizer `class` if needed.
+* Adjust optimizer `class`, `lr` and `betas` if needed.
 
 ```yaml
 models:
@@ -303,23 +303,26 @@ NEEDS WORK
 
 BSD 3-Clause License.
 
-* `model/hifi_gan.py`, `utils.mel.py`, pretrained checkpoints from https://github.com/jik876/hifi-gan (MIT License)
+* `model/hifi_gan.py`, `utils/mel.py`, pretrained checkpoints are copied/modified
+  from https://github.com/jik876/hifi-gan (MIT License)
 * [Wav2Vec2](https://github.com/pytorch/fairseq/tree/main/examples/wav2vec#wav2vec-20) (MIT License) pretrained
   checkpoint ported to
   [HuggingFace](https://huggingface.co/facebook/wav2vec2-large-xlsr-53) (Apache License 2.0)
 
 ## References
 
-NEEDS WORK
-
 * Choi, Hyeong-Seok, et al. "Neural Analysis and Synthesis: Reconstructing Speech from Self-Supervised Representations."
+* Baevski, Alexei, et al. "wav2vec 2.0: A framework for self-supervised learning of speech representations."
+* Desplanques, Brecht, Jenthe Thienpondt, and Kris Demuynck. "Ecapa-tdnn: Emphasized channel attention, propagation and aggregation in tdnn based speaker verification."
+* Chen, Mingjian, et al. "Adaspeech: Adaptive text to speech for custom voice."
+  
 * [Cookbook formulae for audio equalizer biquad filter coefficients](https://webaudio.github.io/Audio-EQ-Cookbook/audio-eq-cookbook.html)
 
 This implementation uses codes/data from following repositories:
 
 * [hifi-gan](https://github.com/jik876/hifi-gan)
 * [vctk-silence-labels](https://github.com/nii-yamagishilab/vctk-silence-labels.git)
-* [Wav2Vec2](https://github.com/pytorch/fairseq/tree/main/examples/wav2vec#wav2vec-20)
+& [Mellotron](https://github.com/NVIDIA/mellotron/blob/master/yin.py)
 
 Provided Checkpoints are trained from:
 
