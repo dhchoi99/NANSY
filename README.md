@@ -12,8 +12,7 @@ Check Authors'
 
 ### Sample-Only Demo Page
 
-TODO  
-Check [Demo Page]()
+Check [Demo Page](https://dhchoi99.github.io/NANSY)
 
 ### Concerns
 
@@ -36,12 +35,18 @@ We provide both pretrained checkpoint of Discriminator network and inference cod
 
 ### Docker
 
+#### Image
+
 If using cu113 compatible environment, use [Dockerfile](./Dockerfile)  
 If using cu102 compatible environment, use [Dockerfile-cu102](./Dockerfile_cu102)
 
 `docker build -f Dockerfile -t nansy:v0.0 .`
 
-Then,  
+#### Container
+
+After building appropriate image, use docker-compose or docker to run a container.  
+You may want to modify `docker-compose.yml` or `docker_run_script.sh`
+
 `docker-compose -f docker-compose.yml run --service-ports --name CONTAINER_NAME nansy_container bash`  
 or  
 [`bash docker_run_script.sh`](./docker_run_script.sh)
