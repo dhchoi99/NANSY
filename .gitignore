@@ -4,5 +4,6 @@ __pycache__
 
 
 *.wav
+!docs/src/audio/*.wav
 
 configs/hifi-gan/*
