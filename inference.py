@@ -1,8 +1,10 @@
 import argparse
 from collections import OrderedDict
+import math
 
 import numpy as np
 from omegaconf import OmegaConf, DictConfig
+import parselmouth
 import torch
 import torchaudio.functional as AF
 from tqdm.notebook import tqdm, trange
@@ -10,6 +12,14 @@ from tqdm.notebook import tqdm, trange
 from datasets.custom import CustomDataset
 from models.analysis import Analysis
 from models.synthesis import Synthesis
+from datasets.functional import wav_to_Sound
+
+
+def hz_diff_to_midi_diff(a, b, semitone_range=12):
+    ratio = a / b
+    ratio_linear = math.log(ratio, 2)
+    midi_diff = semitone_range * ratio_linear
+    return midi_diff
 
 
 def pl_checkpoint_to_torch_checkpoints(state_dict):
@@ -63,12 +73,15 @@ def main():
 
     conf_audio = OmegaConf.load(args.path_audio_conf)
     conf = DictConfig({'audio': conf_audio})
-
     self = CustomDataset(conf)
-    _, wav_22k_source = self.load_wav(args.path_audio_source, 22050)
-    wav_16k_source = AF.resample(wav_22k_source, 22050, 16000)
-    _, wav_16k_target = self.load_wav(args.path_audio_target, 16000)
-    mel_22k = self.load_mel(args.path_audio_source, sr=22050)
+
+    _, wav_22k_a_torch = self.load_wav(args.path_audio_source, 22050)
+    wav_16k_a_torch = AF.resample(wav_22k_a_torch, 22050, 16000)
+    mel_22k_a = self.load_mel(args.path_audio_source, sr=22050)
+
+    _, wav_16k_b_torch = self.load_wav(args.path_audio_target, 16000)
+    wav_22k_b_torch = AF.resample(wav_16k_b_torch, 16000, 22050)
+    mel_22k_b = self.load_mel(args.path_audio_target, sr=16000)
 
     data_ckpt = torch.load(args.path_ckpt, map_location='cpu')
     state_dict = data_ckpt['state_dict']
@@ -84,102 +97,173 @@ def main():
 
     networks = {'Analysis': analysis, 'Synthesis': synthesis}
 
-    tsa_helper = TSAHelper().to(args.device)
-    print(tsa_helper.embedding)
-    opt = torch.optim.Adam(tsa_helper.parameters(), lr=1e-4, betas=(0.5, 0.9))
+    # region analysis
 
-    def loader_helper(mel_start):
-        pos_time_idxs = self.get_time_idxs(mel_start)
-        print(pos_time_idxs)
-        # wav_16k_source
-        gt_audio_f = self.crop_audio(wav_16k_source, pos_time_idxs[3], pos_time_idxs[5])
-
-        return_data['gt_audio_16k_f'] = gt_audio_f
-
-        # wav_16k_target
-        gt_audio_16k = self.crop_audio(wav_16k_target, pos_time_idxs[3], pos_time_idxs[5])
-        return_data['gt_audio_16k'] = gt_audio_16k
-
-        # mel_22k_source
-        gt_mel_22k = self.crop_audio(mel_22k, pos_time_idxs[0], pos_time_idxs[1], padding_value=self.mel_padding_value)
-        return_data['gt_mel_22k'] = gt_mel_22k
-
-        # wav_22k_source
-        gt_audio_g = self.crop_audio(wav_22k_source, pos_time_idxs[4], pos_time_idxs[7])
-        return_data['gt_audio_22k_g'] = gt_audio_g
-
-        return return_data
-
-    audios = {
-        'gt_source': [],
-        'gt_target': [],
-        'gen_source': [],
-        'gen_source_down': [],
-        'gen_source_up': [],
-        'gen_target': [],
-        'gen_source_tsa': [],
-        'gen_target_tsa': [],
+    logs = {
+        'lps_a': [],
+        'lps_b': [],
+        's_a': [],
+        's_b': [],
+        'e_a': [],
+        'e_b': [],
+        'ps_a': [],
+        'ps_b': [],
+        'a_mel_22k': [],
+        'b_mel_22k': [],
     }
 
-    for idx in trange(0, mel_22k.shape[-1], self.mel_window):
-        return_data = {}
+    audios = {
+        'gt_a': [],
+        'gt_b': [],
+    }
+
+    for idx in trange(0, mel_22k_a.shape[-1], self.mel_window):
         mel_start = idx
-        return_data = loader_helper(mel_start)
+        pos_time_idxs = self.get_time_idxs(mel_start)
+
+        gt_a_16k = self.crop_audio(wav_16k_a_torch, pos_time_idxs[3], pos_time_idxs[5])
+        gt_a_22k = self.crop_audio(wav_22k_a_torch, pos_time_idxs[4], pos_time_idxs[6])
+        gt_a_22k_yin = self.crop_audio(wav_22k_a_torch, pos_time_idxs[4], pos_time_idxs[7])
+        gt_a_mel_22k = self.crop_audio(mel_22k_a, pos_time_idxs[0], pos_time_idxs[1],
+                                       padding_value=self.mel_padding_value)
+
+        gt_b_16k = self.crop_audio(wav_16k_b_torch, pos_time_idxs[3], pos_time_idxs[5])
+        gt_b_22k = self.crop_audio(wav_22k_b_torch, pos_time_idxs[4], pos_time_idxs[6])
+        gt_b_22k_yin = self.crop_audio(wav_22k_b_torch, pos_time_idxs[4], pos_time_idxs[7])
+        gt_b_mel_22k = self.crop_audio(mel_22k_b, pos_time_idxs[0], pos_time_idxs[1],
+                                       padding_value=self.mel_padding_value)
+
+        return_data = {
+            'a_wav_16k': gt_a_16k,
+            'a_wav_22k': gt_a_22k,
+            'a_wav_22k_yin': gt_a_22k_yin,
+            'a_mel_22k': gt_a_mel_22k,
+
+            'b_wav_16k': gt_b_16k,
+            'b_wav_22k': gt_b_22k,
+            'b_wav_22k_yin': gt_b_22k_yin,
+            'b_mel_22k': gt_b_mel_22k,
+        }
 
         batch = {key: value.unsqueeze(0).to(args.device) for key, value in return_data.items()}
+        audios['gt_a'].append(batch['a_wav_22k'][0].cpu().numpy())
+        audios['gt_b'].append(batch['b_wav_22k'][0].cpu().numpy())
 
-        # gt audio
-        audios['gt_source'].append(batch['gt_audio_16k_f'][0].cpu().numpy())
-        audios['gt_target'].append(batch['gt_audio_16k'][0].cpu().numpy())
+        logs['a_mel_22k'].append(batch['a_mel_22k'])
+        logs['b_mel_22k'].append(batch['b_mel_22k'])
 
-        # analysis step
         with torch.no_grad():
-            lps = networks['Analysis'].linguistic(batch['gt_audio_16k_f'])
-            s_src = networks['Analysis'].speaker(batch['gt_audio_16k_f'])
-            s_tgt = networks['Analysis'].speaker(batch['gt_audio_16k'])
-            e = networks['Analysis'].energy(batch['gt_mel_22k'])
-            ps_raw = networks['Analysis'].pitch.yingram_batch(batch['gt_audio_22k_g'])
-            ps = ps_raw[:, 19:69]
-            ps_up = ps_raw[:, 25:75]
-            ps_down = ps_raw[:, 14:64]
+            lps_a = networks['Analysis'].linguistic(batch['a_wav_16k'])
+            lps_b = networks['Analysis'].linguistic(batch['b_wav_16k'])
 
-        # reconstructed source
-        with torch.no_grad():
-            result = networks['Synthesis'](lps, s_src, e, ps)
-            audios['gen_source'].append(result['audio_gen'][0].cpu().numpy())
+            logs['lps_a'].append(lps_a)
+            logs['lps_b'].append(lps_b)
 
-        # yingram manipulation
-        with torch.no_grad():
-            result = networks['Synthesis'](lps, s_src, e, ps_down)
-            audios['gen_source_down'].append(result['audio_gen'][0].cpu().numpy())
-            result = networks['Synthesis'](lps, s_src, e, ps_up)
-            audios['gen_source_up'].append(result['audio_gen'][0].cpu().numpy())
+            s_a = networks['Analysis'].speaker(batch['a_wav_16k'])
+            s_b = networks['Analysis'].speaker(batch['b_wav_16k'])
+            logs['s_a'].append(s_a)
+            logs['s_b'].append(s_b)
 
-        # VC, source -> target
+            e_a = networks['Analysis'].energy(batch['a_mel_22k'])
+            e_b = networks['Analysis'].energy(batch['b_mel_22k'])
+
+            logs['e_a'].append(e_a)
+            logs['e_b'].append(e_b)
+
+            ps_a_ori = networks['Analysis'].pitch.yingram_batch(batch['a_wav_22k_yin'])
+            logs['ps_a'].append(ps_a_ori)
+            ps_b_ori = networks['Analysis'].pitch.yingram_batch(batch['b_wav_22k_yin'])
+            logs['ps_b'].append(ps_b_ori)
+
+    # endregion
+
+    # region synthesis
+
+    audios.update({
+        'recon_a': [],
+        'recon_b': [],
+        'text_a_spk_b': [],
+        'text_b_spk_a': [],
+        'recon_a_tsa': [],
+        'text_a_spk_b_tsa': [],
+    })
+    tsa_helper = TSAHelper().to(args.device)
+    opt = torch.optim.Adam(tsa_helper.parameters(), lr=1e-4, betas=(0.5, 0.9))
+    pitch_median_a = None
+    pitch_median_b = None
+
+    for idx in range(len(logs['lps_a'])):
+        lps_a = logs['lps_a'][idx]
+        lps_b = logs['lps_b'][idx]
+
+        s_a = logs['s_a'][idx]
+        s_b = logs['s_b'][idx]
+
+        e_a = logs['e_a'][idx]
+        e_b = logs['e_b'][idx]
+
+        ps_a_ori = logs['ps_a'][idx]
+        ps_b_ori = logs['ps_b'][idx]
+
+        # recon
         with torch.no_grad():
-            result = networks['Synthesis'](lps, s_tgt, e, ps)
-            audios['gen_target'].append(result['audio_gen'][0].cpu().numpy())
+            result_a = networks['Synthesis'](lps_a, s_a, e_a, ps_a_ori[:, 19:69])
+            audios['recon_a'].append(result_a['audio_gen'][0].cpu().numpy())
+
+            result_b = networks['Synthesis'](lps_b, s_b, e_b, ps_b_ori[:, 19:69])
+            audios['recon_b'].append(result_b['audio_gen'][0].cpu().numpy())
+
+        # vc
+        s_a = torch.mean(torch.cat(logs['s_a'], dim=0), dim=0, keepdim=True)
+        s_b = torch.mean(torch.cat(logs['s_b'], dim=0), dim=0, keepdim=True)
+
+        sound_a = wav_to_Sound(audios['gt_a'][idx].copy(), 22050)
+        pitch_a = parselmouth.praat.call(sound_a, "To Pitch", 0, 75, 600)
+        pitch_median_a_temp = parselmouth.praat.call(pitch_a, "Get quantile", 0.0, 0.0, 0.5, "Hertz")
+        if not math.isnan(pitch_median_a_temp):
+            pitch_median_a = pitch_median_a_temp
+
+        sound_b = wav_to_Sound(audios['gt_b'][idx].copy(), 22050)
+        pitch_b = parselmouth.praat.call(sound_b, "To Pitch", 0, 75, 600)
+        pitch_median_b_temp = parselmouth.praat.call(pitch_b, "Get quantile", 0.0, 0.0, 0.5, "Hertz")
+        if not math.isnan(pitch_median_b_temp):
+            pitch_median_b = pitch_median_b_temp
+
+        midi_diff = hz_diff_to_midi_diff(pitch_median_a, pitch_median_b)
+        print('pitch', pitch_median_a, pitch_median_b, 'midi', midi_diff)
+        midi_diff = int(midi_diff)
+        if midi_diff > 11:
+            midi_diff = 11
+        if midi_diff < -11:
+            midi_diff = -11
+
+        with torch.no_grad():
+            result_a2b = networks['Synthesis'](lps_a, s_b, e_a, ps_a_ori[:, 19 + midi_diff:69 + midi_diff])
+
+            audios['text_a_spk_b'].append(result_a2b['audio_gen'][0].cpu().numpy())
+
+            result_b2a = networks['Synthesis'](lps_b, s_a, e_b, ps_b_ori[:, 19 - midi_diff:69 - midi_diff])
+            audios['text_b_spk_a'].append(result_b2a['audio_gen'][0].cpu().numpy())
 
         # test time self adaptation
         for i in range(args.tsa_loop):
-            lps_tsa = lps.detach().clone()
+            lps_tsa = lps_a.detach().clone()
             lps_tsa = tsa_helper(lps_tsa)
-            result = networks['Synthesis'](lps_tsa, s_src.clone().detach(), e, ps)
+            result = networks['Synthesis'](lps_tsa, s_a.clone().detach(), e_a, ps_a_ori[:, 19:69])
 
             opt.zero_grad()
-            loss_mel = torch.nn.functional.l1_loss(batch['gt_mel_22k'], result['gen_mel'])
+            a_mel_22k = logs['a_mel_22k'][idx]
+            loss_mel = torch.nn.functional.l1_loss(a_mel_22k, result['gen_mel'])
             loss_mel.backward()
             opt.step()
 
-        # TSA-generated audio
         with torch.no_grad():
-            lps = tsa_helper(lps)
-            result = networks['Synthesis'](lps, s_src, e, ps)
-            audios['gen_source_tsa'].append(result['audio_gen'][0].cpu().numpy())
-            result = networks['Synthesis'](lps, s_tgt, e, ps)
-            audios['gen_target_tsa'].append(result['audio_gen'][0].cpu().numpy())
+            lps_a = tsa_helper(lps_a)
+            result = networks['Synthesis'](lps_a, s_a, e_a, ps_a_ori[:, 19:69])
+            audios['recon_a_tsa'].append(result['audio_gen'][0].cpu().numpy())
 
-    print(tsa_helper.embedding)
+            result = networks['Synthesis'](lps_a, s_b, e_a, ps_a_ori[:, 19 + midi_diff:69 + midi_diff])
+            audios['text_a_spk_b_tsa'].append(result['audio_gen'][0].cpu().numpy())
 
     final_audios = {}
     for key, value in audios.items():
@@ -188,6 +272,8 @@ def main():
             print(key, len(value), final_audios[key].shape)
         except Exception as e:
             print(key, e)
+
+            # end region
 
     return final_audios
 
@@ -201,7 +287,7 @@ if __name__ == '__main__':
     dir_save = './temp_result'
     os.makedirs(dir_save, exist_ok=True)
     for key, value in final_audios.items():
-        sample_rate = 22050 if key != 'gt_target' else 16000
+        sample_rate = 22050
         try:
             wavfile.write(
                 os.path.join(dir_save, f'{key}.wav'),
@@ -209,11 +295,3 @@ if __name__ == '__main__':
                 value.squeeze().astype(np.float32))
         except Exception as e:
             print(key, e)
-
-    # import IPython.display as ipd
-    # ipd.Audio(final_audios['gt_source'], rate=22050)
-    # ipd.Audio(final_audios['gt_target'], rate=16000)
-    # ipd.Audio(final_audios['gen_source'], rate=22050)
-    # ipd.Audio(final_audios['gen_target'], rate=22050)
-    # ipd.Audio(final_audios['gen_source_tsa'], rate=22050)
-    # ipd.Audio(final_audios['gen_target_tsa'], rate=22050)
