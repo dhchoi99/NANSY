@@ -273,7 +273,38 @@ def main():
         except Exception as e:
             print(key, e)
 
-            # end region
+    # end region
+
+    # region tsm
+    cats = {key: torch.cat(logs[key], dim=-1) for key in logs.keys()}
+
+    scale = 2
+    interpolated_cats = {key: torch.nn.functional.interpolate(value, scale_factor=scale, mode='linear')
+                         for key, value in cats.items()}
+
+    audios.update({
+        'tsm_a': [],
+        'tsm_b': [],
+    })
+    for idx in range(interpolated_cats['lps_a'].shape[-1] // 74):
+        lps_a = interpolated_cats['lps_a'][..., 74 * idx:74 * (idx + 1)]
+        lps_b = interpolated_cats['lps_b'][..., 74 * idx:74 * (idx + 1)]
+        s_a = torch.mean(torch.cat(logs['s_a'], dim=0), dim=0, keepdim=True)
+        s_b = torch.mean(torch.cat(logs['s_b'], dim=0), dim=0, keepdim=True)
+        e_a = interpolated_cats['e_a'][..., 128 * idx:128 * (idx + 1)]
+        e_b = interpolated_cats['e_b'][..., 128 * idx:128 * (idx + 1)]
+        ps_a_ori = interpolated_cats['ps_a'][..., 128 * idx:128 * (idx + 1)]
+        ps_b_ori = interpolated_cats['ps_b'][..., 128 * idx:128 * (idx + 1)]
+
+        # recon
+        with torch.no_grad():
+            result_a = networks['Synthesis'](lps_a, s_a, e_a, ps_a_ori[:, 19:69])
+            audios['tsm_a'].append(result_a['audio_gen'][0].cpu().numpy())
+
+            result_b = networks['Synthesis'](lps_b, s_b, e_b, ps_b_ori[:, 19:69])
+            audios['tsm_b'].append(result_b['audio_gen'][0].cpu().numpy())
+
+    # endregion
 
     return final_audios
 
