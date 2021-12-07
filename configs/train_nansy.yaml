@@ -4,7 +4,7 @@ pl:
       save_top_k: -1
       monitor: "train/backward"
       verbose: True
-      every_n_epochs: 1 #epochs
+      every_n_epochs: 5 #epochs
 
   trainer:
     gradient_clip_val: 0 # don't clip (default value)
@@ -18,7 +18,7 @@ pl:
 
 logging:
   log_dir: /raid/vision/dhchoi/log/nansy/
-  seed: "32"
+  seed: "35"
   freq: 100
   device: cuda
   nepochs: 1000
@@ -52,7 +52,7 @@ datasets:
     ]
 
     mode: train
-    batch_size: 32
+    batch_size: 128
     shuffle: True
     num_workers: 16
 
@@ -75,7 +75,7 @@ datasets:
     ]
 
     mode: eval
-    batch_size: 32
+    batch_size: 128
     shuffle: False
     num_workers: 4
 

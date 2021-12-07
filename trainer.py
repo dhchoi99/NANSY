@@ -115,7 +115,7 @@ class Trainer(pl.LightningModule):
         # logs['s_neg'] = self.networks['Analysis'].speaker(s_neg_pre)
 
         with torch.no_grad():
-            logs['e'] = self.networks['Analysis'].energy(batch['gt_log_mel_22k'])
+            logs['e'] = self.networks['Analysis'].energy(batch['gt_mel_22k'])
             logs['ps'] = self.networks['Analysis'].pitch.yingram_batch(batch['gt_audio_22k_g'])
             logs['ps'] = logs['ps'][:, 19:69]
 

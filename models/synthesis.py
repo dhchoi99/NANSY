@@ -159,13 +159,25 @@ class Synthesis(nn.Module):
         for param in self.vocoder.parameters():
             param.requires_grad = False
 
+        import utils.mel
+        zero_audio = torch.zeros(44100).float()
+        zero_mel = utils.mel.mel_spectrogram(
+            zero_audio.unsqueeze(0),
+            1024, 80, 22050, 256, 1024, 0, 8000
+        )
+        self.mel_padding_value = torch.min(zero_mel)
+
+    def _denormalize(self, spec):
+        return spec * -self.mel_padding_value + self.mel_padding_value
+
     def forward(self, lps, s, e, ps):
         result = {}
         result['mel_filter'] = self.filter_generator(lps, e, s)
         result['mel_source'] = self.source_generator(ps, e, s)
         result['gen_mel'] = result['mel_filter'] + result['mel_source']
         with torch.no_grad():
-            result['audio_gen'] = self.vocoder(result['gen_mel'])
+            hifigan_mel = self._denormalize(result['gen_mel'])
+            result['audio_gen'] = self.vocoder(hifigan_mel)
         return result
 
     def train(self, mode: bool = True):

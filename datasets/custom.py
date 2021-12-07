@@ -229,6 +229,12 @@ class CustomDataset(BaseDataset):
 
         return mel_start, mel_end, t_start, w_start_16k, w_start_22k, w_end_16k, w_end_22k, w_end_22k_yin
 
+    def _normalize(self, spec):
+        return torch.clamp((spec - self.mel_padding_value) / -self.mel_padding_value, 0, 1)
+
+    def _denormalize(self, spec):
+        return spec * -self.mel_padding_value + self.mel_padding_value
+
     def get_pos_sample(self, data: dict):
         r"""loads positive sample from data
 
@@ -250,8 +256,8 @@ class CustomDataset(BaseDataset):
         pos_time_idxs = self.get_time_idxs(mel_start)
 
         mel_22k = self.crop_audio(mel_22k, pos_time_idxs[0], pos_time_idxs[1], padding_value=self.mel_padding_value)
+        mel_22k = self._normalize(mel_22k)
         return_data['gt_mel_22k'] = mel_22k
-        return_data['gt_log_mel_22k'] = mel_22k
 
         assert pos_time_idxs[3] <= wav_16k_torch.shape[-1], '16k_1'
         wav_16k = self.crop_audio(wav_16k_torch, pos_time_idxs[3], pos_time_idxs[5])
