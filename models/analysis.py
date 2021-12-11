@@ -35,7 +35,7 @@ class Linguistic(torch.nn.Module):
         """
         with torch.no_grad():
             outputs = self.wav2vec2(x, output_hidden_states=True)
-        y = outputs.hidden_states[1]  # B x t x C(1024)
+        y = outputs.hidden_states[12]  # B x t x C(1024)
         y = y.permute((0, 2, 1))  # B x t x C -> B x C x t
         return y
 
@@ -79,7 +79,7 @@ class Speaker(torch.nn.Module):
         """
         with torch.no_grad():
             outputs = self.wav2vec2(x, output_hidden_states=True)
-        y = outputs.hidden_states[12]  # B x t x C(1024)
+        y = outputs.hidden_states[1]  # B x t x C(1024)
         y = y.permute((0, 2, 1))  # B x t x C -> B x C x t
         y = self.spk(y)  # B x C(1024) x t -> B x D(192)
         y = torch.nn.functional.normalize(y, p=2, dim=-1)
