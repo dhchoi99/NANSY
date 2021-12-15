@@ -2,13 +2,14 @@ import importlib
 
 import matplotlib.pylab as plt
 import numpy as np
-from omegaconf import OmegaConf
+from omegaconf import OmegaConf, DictConfig
 import torch
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
 import transformers
 import pytorch_lightning as pl
 
+from models.loss import GANLoss
 from models.hifi_gan import Generator as hifigan_vocoder
 
 MATPLOTLIB_FLAG = False
@@ -61,6 +62,12 @@ class Trainer(pl.LightningModule):
         losses_dict = {}
         losses_dict['L1'] = torch.nn.L1Loss()
         losses_dict['BCE'] = torch.nn.BCEWithLogitsLoss()
+        conf_ganloss = DictConfig({
+            'gan_mode': 'lsgan',
+            'real': 1.0,
+            'fake': 0.0,
+        })
+        losses_dict['GANLoss'] = GANLoss(conf_ganloss)
 
         return losses_dict
 
@@ -128,9 +135,11 @@ class Trainer(pl.LightningModule):
         # for G
         if 'Discriminator' in self.networks.keys():
             pred_gen = self.networks['Discriminator'](logs['gen_mel'], logs['s_pos'], logs['s_neg'])
+
+            loss['D_gen_forG'] = self.losses['GANLoss'](pred_gen, True, False)
             # loss['D_gen_forG'] = self.losses['BCE'](pred_gen, torch.ones_like(pred_gen))
-            loss['D_gen_forG'] = torch.mean(torch.sigmoid(pred_gen)) # 0=gt, 1=gen
-            loss['backward'] = loss['backward'] + loss['D_gen_forG']
+            # loss['D_gen_forG'] = torch.mean(torch.sigmoid(pred_gen)) # 0=gt, 1=gen
+            loss['backward'] = loss['backward'] + 1 * loss['D_gen_forG']
 
         # for D
         if 'Discriminator' in self.networks.keys():
@@ -139,11 +148,18 @@ class Trainer(pl.LightningModule):
             logs['s_neg'] = logs['s_neg'].detach()
             pred_gen = self.networks['Discriminator'](logs['gen_mel'], logs['s_pos'], logs['s_neg'])
             pred_gt = self.networks['Discriminator'](logs['gt_mel_22k'], logs['s_pos'], logs['s_neg'])
+
+            loss['D_gen_forD'] = self.losses['GANLoss'](pred_gen, False, True)
+            loss['D_gt_forD'] = self.losses['GANLoss'](pred_gt, True, True)
+            loss['D_backward'] = loss['D_gen_forD'] + loss['D_gt_forD']
+
             # loss['D_gen_forD'] = self.losses['BCE'](pred_gen, torch.zeros_like(pred_gen))
-            loss['D_gen_forD'] = torch.mean(torch.sigmoid(pred_gen))
             # loss['D_gt_forD'] = self.losses['BCE'](pred_gt, torch.ones_like(pred_gt))
-            loss['D_gt_forD'] = torch.mean(torch.sigmoid(pred_gt))
-            loss['D_backward'] = loss['D_gt_forD'] - loss['D_gen_forD']
+            # loss['D_backward'] = 1 * loss['D_gt_forD'] + loss['D_gen_forD']
+
+            # loss['D_gen_forD'] = torch.mean(torch.sigmoid(pred_gen))
+            # loss['D_gt_forD'] = torch.mean(torch.sigmoid(pred_gt))
+            # loss['D_backward'] = 1 * (loss['D_gt_forD'] - loss['D_gen_forD'])
 
         return loss, logs
 
@@ -176,8 +192,9 @@ class Trainer(pl.LightningModule):
 
     def validation_step(self, batch, batch_idx):
         loss, logs = self.common_step(batch, batch_idx)
-        self.awesome_logging(loss, mode='eval')
-        self.awesome_logging(logs, mode='eval')
+        if batch_idx == 0:
+            self.awesome_logging(loss, mode='eval')
+            self.awesome_logging(logs, mode='eval')
 
     def awesome_logging(self, data, mode):
         tensorboard = self.logger.experiment
