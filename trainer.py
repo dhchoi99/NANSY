@@ -6,6 +6,7 @@ from omegaconf import OmegaConf, DictConfig
 import torch
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
+import torchaudio.functional as AF
 import transformers
 import pytorch_lightning as pl
 
@@ -121,6 +122,7 @@ class Trainer(pl.LightningModule):
         # logs['s_pos'] = self.networks['Analysis'].speaker(s_pos_pre)
         # logs['s_neg'] = self.networks['Analysis'].speaker(s_neg_pre)
 
+        # non-training calculations
         with torch.no_grad():
             logs['e'] = self.networks['Analysis'].energy(batch['gt_mel_22k'])
             logs['ps'] = self.networks['Analysis'].pitch.yingram_batch(batch['gt_audio_22k_g'])
@@ -160,6 +162,18 @@ class Trainer(pl.LightningModule):
             # loss['D_gen_forD'] = torch.mean(torch.sigmoid(pred_gen))
             # loss['D_gt_forD'] = torch.mean(torch.sigmoid(pred_gt))
             # loss['D_backward'] = 1 * (loss['D_gt_forD'] - loss['D_gen_forD'])
+
+        # reconstruction loss
+        gen_audio_22k = result['audio_gen']
+        gen_audio_16k = AF.resample(gen_audio_22k, 22050, 16000)
+
+        logs['recon_lps'] = self.networks['Analysis'].linguistic(gen_audio_16k)
+        logs['recon_s'] = self.networks['Analysis'].speaker(gen_audio_16k)
+
+        loss['recon_lps'] = self.losses['L1'](logs['recon_lps'], logs['lps'])
+        loss['recon_s'] = self.losses['L1'](logs['recon_s'], logs['s_pos'])
+        loss['recon'] = loss['recon_lps'] + loss['recon_s']
+        loss['backward'] = loss['backward'] + loss['recon']
 
         return loss, logs
 
