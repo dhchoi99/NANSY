@@ -30,7 +30,7 @@ class CustomDataset(BaseDataset):
     def configure_args(self):
         self.w_len = 2048  # for yingram
         self.mel_window = 128  # window size in mel
-        self.audio_window_22k = self.mel_window * self.conf.audio.hop_size - 1  # 32767, window size in raw audio
+        self.audio_window_22k = self.mel_window * self.conf.audio.hop_size  # 32768, window size in raw audio
         self.segment_duration = self.audio_window_22k / 22050  # 1.48810 (sec)
         self.audio_window_16k = int(self.segment_duration * 16000)  # 23776
 
@@ -38,17 +38,8 @@ class CustomDataset(BaseDataset):
         self.yin_segment_duration = self.yin_window_22k / 22050.
 
         zero_audio = torch.zeros(44100).float()
-        zero_mel = utils.mel.mel_spectrogram(
-            zero_audio.unsqueeze(0),
-            self.conf.audio.n_fft,
-            self.conf.audio.num_mels,
-            self.conf.audio.sample_rate,
-            self.conf.audio.hop_size,
-            self.conf.audio.win_size,
-            self.conf.audio.fmin,
-            self.conf.audio.fmax
-        )
-        self.mel_padding_value = torch.min(zero_mel)
+        zero_mel = self.load_mel_from_audio(zero_audio, self.conf.audio)
+        self.mel_padding_value = torch.min(zero_mel).data
 
     # endregion
 
@@ -84,7 +75,41 @@ class CustomDataset(BaseDataset):
                 raise ValueError(f"could not load audio file from path :{path}")
         return wav_numpy, wav_torch
 
-    # TODO load mel from torch.tensor audio
+    @staticmethod
+    def load_mel_from_audio(wav_torch: torch.Tensor, conf_audio: dict = None):
+        """calculates mel from torch.Tensor audio
+
+        Args:
+            wav_torch: torch.Tensor of shape (n,) or (B, n)
+            conf_audio
+
+        Returns:
+            mel: torch.Tensor of shape (C x T) or (B x C X T)
+
+        """
+
+        if wav_torch.ndim == 1:
+            wav = wav_torch.unsqueeze(0)  # 1 x n
+        elif wav_torch.ndim == 2:
+            wav = wav_torch
+        else:
+            raise NotImplementedError
+
+        mel = utils.mel.mel_spectrogram(
+            wav,
+            conf_audio['n_fft'],
+            conf_audio['num_mels'],
+            conf_audio['sample_rate'],
+            conf_audio['hop_size'],
+            conf_audio['win_size'],
+            conf_audio['fmin'],
+            conf_audio['fmax']
+        )  # B x C x T
+
+        if wav_torch.ndim == 1:
+            mel = mel[0]  # 1 x C x T -> C x T
+        return mel
+
     def load_mel(self, path_audio: str, sr: int = None) -> torch.Tensor:
         r"""hifi-gan style mel loading
 
@@ -95,21 +120,12 @@ class CustomDataset(BaseDataset):
         returns:
             mel: torch.Tensor of shape (C x T)
         """
-        mel_path = path_audio + '.linear.mel'
+        mel_path = path_audio + '.mel'
         try:
             mel = torch.load(mel_path, map_location='cpu')
         except Exception as e:
             _, wav_torch = self.load_wav(path_audio, sr=sr)
-            mel = utils.mel.mel_spectrogram(
-                wav_torch.unsqueeze(0),  # 1 x t
-                self.conf.audio.n_fft,
-                self.conf.audio.num_mels,
-                self.conf.audio.sample_rate,
-                self.conf.audio.hop_size,
-                self.conf.audio.win_size,
-                self.conf.audio.fmin,
-                self.conf.audio.fmax
-            )[0]  # 1 x C x T -> C x T
+            mel = self.load_mel_from_audio(wav_torch, self.conf.audio)  # C x T
             torch.save(mel, mel_path)
         return mel
 
@@ -127,6 +143,7 @@ class CustomDataset(BaseDataset):
             y: padded torch.Tensor of shape (..., T+length)
         """
         # x: (..., T)
+        pad_at = pad_at.strip().lower()
         if pad_at == 'end':
             y = torch.cat([
                 x, torch.ones(*x.shape[:-1], length) * value
@@ -189,14 +206,12 @@ class CustomDataset(BaseDataset):
             # wav_16k_torch = AF.resample(wav_22k_torch, 22050, 16000)
             wav_16k_torch = torchaudio.transforms.Resample(22050, 16000).forward(wav_22k_torch)
             wav_16k_numpy = wav_16k_torch.numpy()
-        elif wav_22k_path is not None:
-            raise NotImplementedError
         else:
             raise NotImplementedError
         return wav_16k_numpy, wav_16k_torch
 
     def get_random_start_time(self, mel_length: int):
-        if mel_length < self.mel_window:  # if mel_length is smaller than mel_window, use the first frame only and pad
+        if mel_length <= self.mel_window:  # if mel_length is smaller than mel_window, use the first frame only and pad
             mel_start = 0
         else:
             mel_start = random.randint(0, mel_length - self.mel_window)
@@ -206,7 +221,7 @@ class CustomDataset(BaseDataset):
         r"""calculates time-related idxs needed for getitem
 
         params:
-            mel_length: time length of mel
+            mel_start: idx where splitted mel starts
 
         returns:
             mel_start: int, start index of mel
@@ -261,14 +276,19 @@ class CustomDataset(BaseDataset):
 
         assert pos_time_idxs[3] <= wav_16k_torch.shape[-1], '16k_1'
         wav_16k = self.crop_audio(wav_16k_torch, pos_time_idxs[3], pos_time_idxs[5])
-        return_data['gt_audio_16k_f'] = f(wav_16k, sr=16000)
         return_data['gt_audio_16k'] = wav_16k
+
+        wav_16k_torch_f = f(wav_16k_torch, sr=16000)
+        # return_data['gt_audio_16k_f'] = f(wav_16k, sr=16000)
+        return_data['gt_audio_16k_f'] = self.crop_audio(wav_16k_torch_f, pos_time_idxs[3], pos_time_idxs[5])
 
         assert pos_time_idxs[4] <= wav_22k_torch.shape[-1], '22k_1'
         wav_22k = self.crop_audio(wav_22k_torch, pos_time_idxs[4], pos_time_idxs[6])
-        wav_22k_yin = self.crop_audio(wav_22k_torch, pos_time_idxs[4], pos_time_idxs[7])
         return_data['gt_audio_22k'] = wav_22k
-        return_data['gt_audio_22k_g'] = g(wav_22k_yin, sr=22050)
+        wav_22k_torch_g = g(wav_22k_torch, sr=22050)
+        return_data['gt_audio_22k_g'] = self.crop_audio(wav_22k_torch_g, pos_time_idxs[4], pos_time_idxs[7])
+        # wav_22k_yin = self.crop_audio(wav_22k_torch, pos_time_idxs[4], pos_time_idxs[7])
+        # return_data['gt_audio_22k_g'] = g(wav_22k_yin, sr=22050)
 
         return return_data
 
