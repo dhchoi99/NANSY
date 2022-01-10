@@ -277,10 +277,14 @@ def main():
 
     # region tsm
     cats = {key: torch.cat(logs[key], dim=-1) for key in logs.keys()}
+    to_interpolate = {
+        'lps_a': cats['lps_a'], 'lps_b': cats['lps_b'],
+        'e_a': cats['e_a'], 'e_b': cats['e_b'],
+        'ps_a': cats['ps_a'], 'ps_b': cats['ps_b']}
 
     scale = 2
     interpolated_cats = {key: torch.nn.functional.interpolate(value, scale_factor=scale, mode='linear')
-                         for key, value in cats.items()}
+                         for key, value in to_interpolate.items()}
 
     audios.update({
         'tsm_a': [],
