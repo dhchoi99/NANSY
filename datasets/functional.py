@@ -50,6 +50,20 @@ def wav_to_Tensor(wav) -> torch.Tensor:
     return wav_tensor
 
 
+def get_pitch_median(wav, sr: int = None):
+    sound = wav_to_Sound(wav, sr)
+    pitch = None
+    pitch_median = PRAAT_CHANGEGENDER_PITCHMEDIAN_DEFAULT
+
+    try:
+        pitch = parselmouth.praat.call(sound, "To Pitch", 0.8 / 75, 75, 600)
+        pitch_median = parselmouth.praat.call(pitch, "Get quantile", 0.0, 0.0, 0.5, "Hertz")
+    except:
+        pass
+
+    return pitch, pitch_median
+
+
 def apply_formant_and_pitch_shift(
         sound: parselmouth.Sound,
         formant_shift_ratio: float = PRAAT_CHANGEGENDER_FORMANTSHIFTRATIO_DEFAULT,
@@ -67,24 +81,28 @@ def apply_formant_and_pitch_shift(
     new_pitch_median = PRAAT_CHANGEGENDER_PITCHMEDIAN_DEFAULT
     if pitch_shift_ratio != 1.:
         try:
-            pitch = parselmouth.praat.call(sound, "To Pitch", 0, 75, 600)
-            # pitch_mean = parselmouth.praat.call(pitch, "Get mean", 0, 0, "Hertz")
-            try:
-                pitch_median = parselmouth.praat.call(pitch, "Get quantile", 0.0, 0.0, 0.5, "Hertz")
-                if not math.isnan(pitch_median):
-                    new_pitch_median = pitch_median * pitch_shift_ratio
-                    if math.isnan(new_pitch_median):
-                        new_pitch_median = PRAAT_CHANGEGENDER_PITCHMEDIAN_DEFAULT
-                else:
-                    new_pitch_median = PRAAT_CHANGEGENDER_PITCHMEDIAN_DEFAULT
-            except:
+            pitch, pitch_median = get_pitch_median(sound, None)
+            new_pitch_median = pitch_median * pitch_shift_ratio
+
+            # https://github.com/praat/praat/issues/1926#issuecomment-974909408
+            pitch_minimum = parselmouth.praat.call(pitch, "Get minimum", 0.0, 0.0, "Hertz", "Parabolic")
+            newMedian = pitch_median * pitch_shift_ratio
+            scaledMinimum = pitch_minimum * pitch_shift_ratio
+            resultingMinimum = newMedian + (scaledMinimum - newMedian) * pitch_range_ratio
+            if resultingMinimum < 0:
                 new_pitch_median = PRAAT_CHANGEGENDER_PITCHMEDIAN_DEFAULT
-        except:
-            new_pitch_median = PRAAT_CHANGEGENDER_PITCHMEDIAN_DEFAULT
+                pitch_range_ratio = PRAAT_CHANGEGENDER_PITCHRANGERATIO_DEFAULT
+
+            if math.isnan(new_pitch_median):
+                new_pitch_median = PRAAT_CHANGEGENDER_PITCHMEDIAN_DEFAULT
+                pitch_range_ratio = PRAAT_CHANGEGENDER_PITCHRANGERATIO_DEFAULT
+
+        except Exception as e:
+            raise e
 
     try:
         new_sound = parselmouth.praat.call(
-            sound, "Change gender", 75, 600,
+            (sound, pitch), "Change gender",
             formant_shift_ratio,
             new_pitch_median,
             pitch_range_ratio,
@@ -93,7 +111,7 @@ def apply_formant_and_pitch_shift(
     except Exception as e:
         try:
             new_sound = parselmouth.praat.call(
-                sound, "Change gender", 75, 600,
+                (sound, pitch), "Change gender",
                 formant_shift_ratio,
                 0.0,
                 pitch_range_ratio,
@@ -137,9 +155,13 @@ def formant_and_pitch_shift(sound: parselmouth.Sound) -> parselmouth.Sound:
 
 # fs
 def formant_shift(sound: parselmouth.Sound) -> parselmouth.Sound:
-    r"""
+    """designed for formant shifting(fs) in the paper
 
-    designed for formant shifting(fs) in the paper
+    Args:
+        sound: parselmouth Sound object
+
+    Returns:
+
     """
     formant_shifting_ratio = random.uniform(1, 1.4)
     use_reciprocal = random.uniform(-1, 1) > 0
@@ -158,7 +180,7 @@ def power_ratio(r: float, a: float, b: float):
 
 
 # peq
-def parametric_equalizer(wav: torch.Tensor, sr) -> torch.Tensor:
+def parametric_equalizer(wav: torch.Tensor, sr: int) -> torch.Tensor:
     cutoff_low_freq = 60.
     cutoff_high_freq = 10000.
 
@@ -167,14 +189,14 @@ def parametric_equalizer(wav: torch.Tensor, sr) -> torch.Tensor:
 
     num_filters = 8 + 2  # 8 for peak, 2 for high/low
     key_freqs = [
-        power_ratio(float(z) / num_filters, cutoff_low_freq, cutoff_high_freq)
+        power_ratio(float(z) / (num_filters), cutoff_low_freq, cutoff_high_freq)
         for z in range(num_filters)
     ]
-    gains = [random.uniform(-12, 12) for _ in range(num_filters)]
     Qs = [
         power_ratio(random.uniform(0, 1), q_min, q_max)
         for _ in range(num_filters)
     ]
+    gains = [random.uniform(-12, 12) for _ in range(num_filters)]
 
     # peak filters
     for i in range(1, 9):
@@ -216,7 +238,7 @@ def lowShelf_coeffs(dBgain, cutoff_freq, sample_rate, Q):
 
     w0 = 2 * math.pi * cutoff_freq / sample_rate
     alpha = math.sin(w0) / 2 / Q
-    alpha = alpha / math.sqrt(2) * math.sqrt(A + 1 / A)
+    # alpha = alpha / math.sqrt(2) * math.sqrt(A + 1 / A)
 
     b0 = A * ((A + 1) - (A - 1) * math.cos(w0) + 2 * math.sqrt(A) * alpha)
     b1 = 2 * A * ((A - 1) - (A + 1) * math.cos(w0))
@@ -233,7 +255,7 @@ def highShelf_coeffs(dBgain, cutoff_freq, sample_rate, Q):
 
     w0 = 2 * math.pi * cutoff_freq / sample_rate
     alpha = math.sin(w0) / 2 / Q
-    alpha = alpha / math.sqrt(2) * math.sqrt(A + 1 / A)
+    # alpha = alpha / math.sqrt(2) * math.sqrt(A + 1 / A)
 
     b0 = A * ((A + 1) + (A - 1) * math.cos(w0) + 2 * math.sqrt(A) * alpha)
     b1 = -2 * A * ((A - 1) + (A + 1) * math.cos(w0))
@@ -250,7 +272,7 @@ def peaking_coeffs(dBgain, cutoff_freq, sample_rate, Q):
 
     w0 = 2 * math.pi * cutoff_freq / sample_rate
     alpha = math.sin(w0) / 2 / Q
-    alpha = alpha / math.sqrt(2) * math.sqrt(A + 1 / A)
+    # alpha = alpha / math.sqrt(2) * math.sqrt(A + 1 / A)
 
     b0 = 1 + alpha * A
     b1 = -2 * math.cos(w0)
@@ -274,6 +296,7 @@ def apply_iir_filter(wav: torch.Tensor, ftype, dBgain, cutoff_freq, sample_rate,
     if torch_backend:
         return_wav = AF.biquad(wav, b0, b1, b2, a0, a1, a2)
     else:
+        # https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.lfilter_zi.html
         wav_numpy = wav.numpy()
         b = np.asarray([b0, b1, b2])
         a = np.asarray([a0, a1, a2])
@@ -285,20 +308,6 @@ def apply_iir_filter(wav: torch.Tensor, ftype, dBgain, cutoff_freq, sample_rate,
 
 peq = parametric_equalizer
 fs = formant_shift
-
-
-# def f(wav: torch.Tensor, sr: int) -> torch.Tensor:
-#     """
-#
-#     :param wav: torch.Tensor of shape (N,)
-#     :param sr: sampling rate
-#     :return: torch.Tensor of shape (M, )
-#     """
-#     wav = peq(wav, sr)
-#     wav_numpy = wav.numpy()
-#     sound = wav_to_Sound(wav_numpy, sampling_frequency=sr)
-#     sound = formant_and_pitch_shift(sound)
-#     return torch.from_numpy(sound.values)
 
 
 def g(wav: torch.Tensor, sr: int) -> torch.Tensor:
@@ -324,23 +333,8 @@ def f(wav: torch.Tensor, sr: int) -> torch.Tensor:
     wav = peq(wav, sr)
     wav_numpy = wav.numpy()
 
-    n_steps = random.uniform(-12, 12)
-    wav_numpy = librosa.effects.pitch_shift(
-        wav_numpy, sr=sr,
-        n_steps=n_steps, bins_per_octave=12
-    )
-    # n_steps = random.randint(-24, 24)
-    # with torch.no_grad():
-    #     wav = AF.pitch_shift(
-    #         wav, sample_rate=sr,
-    #         n_steps=n_steps, bins_per_octave=12,
-    #         n_fft=1024, win_length=1024, hop_length=256
-    #     )
-
     sound = wav_to_Sound(wav_numpy, sampling_frequency=sr)
-    sound = formant_shift(sound)
-    wav_numpy = sound.values
+    sound = formant_and_pitch_shift(sound)
 
-    wav = torch.from_numpy(wav_numpy).float().squeeze(0)
-
+    wav = torch.from_numpy(sound.values).float().squeeze(0)
     return wav
