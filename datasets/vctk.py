@@ -14,18 +14,6 @@ class VCTKDataset(CustomDataset):
     def read_metadata(self):
         mode = self.conf.mode
 
-        timestamps = {}
-        path_timestamps = self.conf.path.timestamp
-        with open(path_timestamps, 'r') as f:
-            timestamps_list = f.readlines()
-        for line in timestamps_list:
-            timestamp_data = line.strip().split(' ')
-            if len(timestamp_data) == 3:
-                file_id, t_start, t_end = timestamp_data
-                t_start = float(t_start)
-                t_end = float(t_end)
-                timestamps[file_id] = (t_start, t_end)
-
         data_list = []
         path_metadata = self.conf.path.configs[mode]
         with open(path_metadata, 'r') as f:
@@ -37,13 +25,11 @@ class VCTKDataset(CustomDataset):
             wav_path_22k = os.path.join(self.conf.path.root, wav_path)
             wav_path_16k = wav_path_22k.replace('wav22', 'wav16')
 
-            # if file_id in timestamps.keys():
             if True:
                 data = {
                     'wav_path_22k': wav_path_22k,
                     'wav_path_16k': wav_path_16k,
                     'text': txt,
-                    # 'timestamp': timestamps[file_id],
                     'speaker_id': speaker_id,
                 }
                 data_list.append(data)

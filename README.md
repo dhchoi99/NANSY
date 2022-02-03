@@ -159,7 +159,6 @@ path:
   wav22: data/VCTK-Corpus/wav22
   wav16: data/VCTK-Corpus/wav16
   txt: data/VCTK-Corpus/txt
-  timestamp: ./vctk-silence-labels/vctk-silences.0.92.txt
 
   configs:
     train: data/VCTK-Corpus/vctk_22k_train.txt
@@ -321,7 +320,6 @@ BSD 3-Clause License.
 This implementation uses codes/data from following repositories:
 
 * [hifi-gan](https://github.com/jik876/hifi-gan)
-* [vctk-silence-labels](https://github.com/nii-yamagishilab/vctk-silence-labels.git)
   & [Mellotron](https://github.com/NVIDIA/mellotron/blob/master/yin.py)
 
 Provided Checkpoints are trained from:
