@@ -267,8 +267,7 @@ class CustomDataset(BaseDataset):
         mel_22k = self.load_mel(data['wav_path_22k'], sr=22050)
 
         # assert mel_22k.shape[-1] >= self.minimum_mel_length, f'{mel_22k.shape[-1]}, {self.minimum_mel_length}'
-        # mel_start = random.randint(0, mel_22k.shape[-1] - self.minimum_mel_length)
-        mel_start = mel_22k.shape[-1] - self.minimum_mel_length
+        mel_start = random.randint(0, mel_22k.shape[-1] - self.minimum_mel_length)
         pos_time_idxs = self.get_time_idxs(mel_start)
 
         assert mel_22k.shape[-1] >= pos_time_idxs[1]
@@ -293,14 +292,16 @@ class CustomDataset(BaseDataset):
         return_data = {}
 
         wav_22k_numpy, wav_22k_torch = self.get_wav_22k(data['wav_path_22k'])
-        assert wav_22k_numpy.shape[-1] >= self.minimum_audio_length
+        if wav_22k_torch.shape[-1] < self.minimum_audio_length:
+            wav_22k_torch = torch.nn.functional.pad(
+                wav_22k_torch, (0, self.minimum_audio_length - wav_22k_torch.shape[-1]), mode='constant', value=0.0)
 
         _, pitch_median = get_pitch_median(wav_22k_numpy, sr=22050)
         return_data['pitch_median_neg'] = pitch_median
         _, wav_16k_torch = self.get_wav_16k(data['wav_path_16k'], data['wav_path_22k'], wav_22k_torch)
         mel_22k = self.load_mel(data['wav_path_22k'], sr=22050)
 
-        assert mel_22k.shape[-1] >= self.minimum_mel_length
+        # assert mel_22k.shape[-1] >= self.minimum_mel_length
         mel_start = random.randint(0, mel_22k.shape[-1] - self.minimum_mel_length)
         negative_time_idxs = self.get_time_idxs(mel_start)
 
@@ -333,9 +334,9 @@ class CustomDataset(BaseDataset):
 
         return_data = {}
         return_data_pos = self.get_pos_sample(pos_data)
-        # return_data_neg = self.get_neg_sample(neg_data)
+        return_data_neg = self.get_neg_sample(neg_data)
         return_data.update(return_data_pos)
-        # return_data.update(return_data_neg)
+        return_data.update(return_data_neg)
 
         return return_data
 
