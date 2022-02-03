@@ -17,7 +17,7 @@ pl:
     benchmark: True
 
 logging:
-  log_dir: /raid/vision/dhchoi/log/nansy/
+  log_dir: './logs'
   seed: "40"
   freq: 100
   device: cuda
@@ -39,16 +39,6 @@ datasets:
 #        'configs/datasets/css10.yaml'
         'configs/datasets/vctk.yaml',
         'configs/datasets/libritts360.yaml',
-#        'configs/datasets/css10_chinese.yaml',
-#        'configs/datasets/css10_dutch.yaml',
-#        'configs/datasets/css10_finnish.yaml',
-#        'configs/datasets/css10_french.yaml',
-#        'configs/datasets/css10_german.yaml',
-#        'configs/datasets/css10_greek.yaml',
-#        'configs/datasets/css10_hungarian.yaml',
-#        'configs/datasets/css10_japanese.yaml',
-#        'configs/datasets/css10_russian.yaml',
-#        'configs/datasets/css10_spanish.yaml',
     ]
 
     mode: train
@@ -62,16 +52,6 @@ datasets:
 #        'configs/datasets/css10.yaml'
         'configs/datasets/vctk.yaml',
         'configs/datasets/libritts360.yaml',
-#        'configs/datasets/css10_chinese.yaml',
-#        'configs/datasets/css10_dutch.yaml',
-#        'configs/datasets/css10_finnish.yaml',
-#        'configs/datasets/css10_french.yaml',
-#        'configs/datasets/css10_german.yaml',
-#        'configs/datasets/css10_greek.yaml',
-#        'configs/datasets/css10_hungarian.yaml',
-#        'configs/datasets/css10_japanese.yaml',
-#        'configs/datasets/css10_russian.yaml',
-#        'configs/datasets/css10_spanish.yaml',
     ]
 
     mode: eval

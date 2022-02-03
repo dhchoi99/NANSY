@@ -3,8 +3,8 @@ load:
   audio: 'configs/audio/22k.yaml'
 
 path:
-  root: /raid/vision/dhchoi/data/
+  root: data/
 
   configs:
-    train: /raid/vision/dhchoi/data/LibriTTS/libritts_train_clean_360_audiopath_text_sid_train.txt
-    eval: /raid/vision/dhchoi/data/LibriTTS/libritts_train_clean_360_audiopath_text_sid_val.txt
+    train: data/LibriTTS/libritts_train_clean_360_audiopath_text_sid_train.txt
+    eval: data/LibriTTS/libritts_train_clean_360_audiopath_text_sid_val.txt

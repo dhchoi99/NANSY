@@ -4,32 +4,32 @@ load:
 
 subdatasets:
   Chinese:
-    metadata: /raid/vision/dhchoi/data/CSS10/CSS_Chinese/transcript.txt
-    root: /raid/vision/dhchoi/data/CSS10/CSS_Chinese
+    metadata: data/CSS10/CSS_Chinese/transcript.txt
+    root: data/CSS10/CSS_Chinese
   Dutch:
-    metadata: /raid/vision/dhchoi/data/CSS10/CSS_Dutch/transcript.txt
-    root: /raid/vision/dhchoi/data/CSS10/CSS_Dutch
+    metadata: data/CSS10/CSS_Dutch/transcript.txt
+    root: data/CSS10/CSS_Dutch
   Finnish:
-    metadata: /raid/vision/dhchoi/data/CSS10/CSS_Finnish/transcript.txt
-    root: /raid/vision/dhchoi/data/CSS10/CSS_Finnish
+    metadata: data/CSS10/CSS_Finnish/transcript.txt
+    root: data/CSS10/CSS_Finnish
   French:
-    metadata: /raid/vision/dhchoi/data/CSS10/CSS_French/transcript.txt
-    root: /raid/vision/dhchoi/data/CSS10/CSS_French
+    metadata: data/CSS10/CSS_French/transcript.txt
+    root: data/CSS10/CSS_French
   Greek:
-    metadata: /raid/vision/dhchoi/data/CSS10/CSS_Greek/transcript.txt
-    root: /raid/vision/dhchoi/data/CSS10/CSS_Greek
+    metadata: data/CSS10/CSS_Greek/transcript.txt
+    root: data/CSS10/CSS_Greek
   German:
-    metadata: /raid/vision/dhchoi/data/CSS10/CSS_German/transcript.txt
-    root: /raid/vision/dhchoi/data/CSS10/CSS_German
+    metadata: data/CSS10/CSS_German/transcript.txt
+    root: data/CSS10/CSS_German
   Hungarian:
-    metadata: /raid/vision/dhchoi/data/CSS10/CSS_Hungarian/transcript.txt
-    root: /raid/vision/dhchoi/data/CSS10/CSS_Hungarian
+    metadata: data/CSS10/CSS_Hungarian/transcript.txt
+    root: data/CSS10/CSS_Hungarian
   Japanese:
-    metadata: /raid/vision/dhchoi/data/CSS10/CSS_Japanese/transcript.txt
-    root: /raid/vision/dhchoi/data/CSS10/CSS_Japanese
+    metadata: data/CSS10/CSS_Japanese/transcript.txt
+    root: data/CSS10/CSS_Japanese
   Russian:
-    metadata: /raid/vision/dhchoi/data/CSS10/CSS_Russian/transcript.txt
-    root: /raid/vision/dhchoi/data/CSS10/CSS_Russian
+    metadata: data/CSS10/CSS_Russian/transcript.txt
+    root: data/CSS10/CSS_Russian
   Spanish:
-    metadata: /raid/vision/dhchoi/data/CSS10/CSS_Spanish/transcript.txt
-    root: /raid/vision/dhchoi/data/CSS10/CSS_Spanish
+    metadata: data/CSS10/CSS_Spanish/transcript.txt
+    root: data/CSS10/CSS_Spanish

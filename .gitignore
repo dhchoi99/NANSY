@@ -2,6 +2,8 @@ __pycache__
 .idea
 .ipynb_checkpoints
 
+logs/**
+data/**
 
 *.wav
 !docs/src/audio/*.wav
