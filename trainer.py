@@ -164,16 +164,16 @@ class Trainer(pl.LightningModule):
             # loss['D_backward'] = 1 * (loss['D_gt_forD'] - loss['D_gen_forD'])
 
         # reconstruction loss
-        gen_audio_22k = result['audio_gen']
-        gen_audio_16k = AF.resample(gen_audio_22k, 22050, 16000)
-
-        logs['recon_lps'] = self.networks['Analysis'].linguistic(gen_audio_16k)
-        logs['recon_s'] = self.networks['Analysis'].speaker(gen_audio_16k)
-
-        loss['recon_lps'] = self.losses['L1'](logs['recon_lps'], logs['lps'])
-        loss['recon_s'] = self.losses['L1'](logs['recon_s'], logs['s_pos'])
-        loss['recon'] = loss['recon_lps'] + loss['recon_s']
-        loss['backward'] = loss['backward'] + loss['recon']
+        # gen_audio_22k = result['audio_gen']
+        # gen_audio_16k = AF.resample(gen_audio_22k, 22050, 16000)
+        #
+        # logs['recon_lps'] = self.networks['Analysis'].linguistic(gen_audio_16k)
+        # logs['recon_s'] = self.networks['Analysis'].speaker(gen_audio_16k)
+        #
+        # loss['recon_lps'] = self.losses['L1'](logs['recon_lps'], logs['lps'])
+        # loss['recon_s'] = self.losses['L1'](logs['recon_s'], logs['s_pos'])
+        # loss['recon'] = loss['recon_lps'] + loss['recon_s']
+        # loss['backward'] = loss['backward'] + loss['recon']
 
         return loss, logs
 
