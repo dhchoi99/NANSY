@@ -3,13 +3,12 @@ load:
   audio: 'configs/audio/22k.yaml'
 
 path:
-  root: /raid/vision/dhchoi/data/
-  wav22: /raid/vision/dhchoi/data/VCTK-Corpus/wav22
-  wav16: /raid/vision/dhchoi/data/VCTK-Corpus/wav16
-  txt: /raid/vision/dhchoi/data/VCTK-Corpus/txt
-  timestamp: ./vctk-silence-labels/vctk-silences.0.92.txt
+  root: data/
+  wav22: data/VCTK-Corpus/wav22
+  wav16: data/VCTK-Corpus/wav16
+  txt: data/VCTK-Corpus/txt
 
   configs:
-    train: /raid/vision/dhchoi/data/VCTK-Corpus/vctk_22k_train.txt
-    eval: /raid/vision/dhchoi/data/VCTK-Corpus/vctk_22k_val.txt
-    test: /raid/vision/dhchoi/data/VCTK-Corpus/vctk_22k_test.txt
+    train: data/VCTK-Corpus/vctk_22k_train.txt
+    eval: data/VCTK-Corpus/vctk_22k_val.txt
+    test: data/VCTK-Corpus/vctk_22k_test.txt

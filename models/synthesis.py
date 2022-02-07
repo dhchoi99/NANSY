@@ -70,7 +70,7 @@ class PreConv(nn.Module):
 
 
 class Generator(nn.Module):
-    def __init__(self, c_in=1024, c_preconv=512, c_mid=128, c_out=80):
+    def __init__(self, c_in=1024, c_preconv=512, c_mid=512, c_out=80):
         super(Generator, self).__init__()
 
         self.network1 = nn.Sequential(
@@ -85,6 +85,11 @@ class Generator(nn.Module):
             ConvGLU(c_mid, ks=3, dilation=3, use_cLN=False),
             ConvGLU(c_mid, ks=3, dilation=9, use_cLN=False),
             ConvGLU(c_mid, ks=3, dilation=27, use_cLN=False),
+
+            # ConvGLU(c_mid, ks=3, dilation=1, use_cLN=False),
+            # ConvGLU(c_mid, ks=3, dilation=3, use_cLN=False),
+            # ConvGLU(c_mid, ks=3, dilation=9, use_cLN=False),
+            # ConvGLU(c_mid, ks=3, dilation=27, use_cLN=False),
 
             ConvGLU(c_mid, ks=3, dilation=1, use_cLN=False),
             ConvGLU(c_mid, ks=3, dilation=3, use_cLN=False),
@@ -104,6 +109,11 @@ class Generator(nn.Module):
             ConvGLU(c_mid + 1, ks=3, dilation=3, use_cLN=True),
             ConvGLU(c_mid + 1, ks=3, dilation=9, use_cLN=True),
             ConvGLU(c_mid + 1, ks=3, dilation=27, use_cLN=True),
+
+            # ConvGLU(c_mid + 1, ks=3, dilation=1, use_cLN=True),
+            # ConvGLU(c_mid + 1, ks=3, dilation=3, use_cLN=True),
+            # ConvGLU(c_mid + 1, ks=3, dilation=9, use_cLN=True),
+            # ConvGLU(c_mid + 1, ks=3, dilation=27, use_cLN=True),
 
             ConvGLU(c_mid + 1, ks=3, dilation=1, use_cLN=True),
             ConvGLU(c_mid + 1, ks=3, dilation=3, use_cLN=True),
@@ -176,7 +186,8 @@ class Synthesis(nn.Module):
         result['mel_source'] = self.source_generator(ps, e, s)
         result['gen_mel'] = result['mel_filter'] + result['mel_source']
         with torch.no_grad():
-            hifigan_mel = self._denormalize(result['gen_mel'])
+            # hifigan_mel = self._denormalize(result['gen_mel'])
+            hifigan_mel = result['gen_mel']
             result['audio_gen'] = self.vocoder(hifigan_mel)
         return result
 
@@ -239,7 +250,7 @@ class Discriminator(nn.Module):
             negative: negative speaker embedding, torch.Tensor of shape (B x d)
 
         Returns:
-
+Nsi
         """
         pred1 = self.psi(self.phi(mel))
         pred = self.res(self.phi(mel))
@@ -254,7 +265,7 @@ class Discriminator(nn.Module):
 if __name__ == '__main__':
     lps = torch.randn(2, 1024, 128)
     s = torch.randn(2, 192)
-    e = torch.randn(2, 128)
+    e = torch.randn(2, 1, 128)
     ps = torch.randn(2, 80, 128)
 
     g1 = Generator(1024, 512, 128, 80)
@@ -264,3 +275,10 @@ if __name__ == '__main__':
     g2 = Generator(80, 512, 128, 80)
     y2 = g2(ps, e, s)
     print(y2.shape)
+
+    d = Discriminator(None)
+    mel = torch.randn(2, 80, 128)
+    s_pos = torch.randn(2, 192)
+    s_neg = torch.randn(2, 192)
+    y3 = d(mel, s_pos, s_neg)
+    print(y3.shape)

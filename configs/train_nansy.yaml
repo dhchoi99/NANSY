@@ -4,7 +4,7 @@ pl:
       save_top_k: -1
       monitor: "train/backward"
       verbose: True
-      every_n_epochs: 5 #epochs
+      every_n_epochs: 10 #epochs
 
   trainer:
     gradient_clip_val: 0 # don't clip (default value)
@@ -17,8 +17,8 @@ pl:
     benchmark: True
 
 logging:
-  log_dir: /raid/vision/dhchoi/log/nansy/
-  seed: "35"
+  log_dir: './logs'
+  seed: "40"
   freq: 100
   device: cuda
   nepochs: 1000
@@ -39,20 +39,10 @@ datasets:
 #        'configs/datasets/css10.yaml'
         'configs/datasets/vctk.yaml',
         'configs/datasets/libritts360.yaml',
-#        'configs/datasets/css10_chinese.yaml',
-#        'configs/datasets/css10_dutch.yaml',
-#        'configs/datasets/css10_finnish.yaml',
-#        'configs/datasets/css10_french.yaml',
-#        'configs/datasets/css10_german.yaml',
-#        'configs/datasets/css10_greek.yaml',
-#        'configs/datasets/css10_hungarian.yaml',
-#        'configs/datasets/css10_japanese.yaml',
-#        'configs/datasets/css10_russian.yaml',
-#        'configs/datasets/css10_spanish.yaml',
     ]
 
     mode: train
-    batch_size: 128
+    batch_size: 32
     shuffle: True
     num_workers: 16
 
@@ -62,20 +52,10 @@ datasets:
 #        'configs/datasets/css10.yaml'
         'configs/datasets/vctk.yaml',
         'configs/datasets/libritts360.yaml',
-#        'configs/datasets/css10_chinese.yaml',
-#        'configs/datasets/css10_dutch.yaml',
-#        'configs/datasets/css10_finnish.yaml',
-#        'configs/datasets/css10_french.yaml',
-#        'configs/datasets/css10_german.yaml',
-#        'configs/datasets/css10_greek.yaml',
-#        'configs/datasets/css10_hungarian.yaml',
-#        'configs/datasets/css10_japanese.yaml',
-#        'configs/datasets/css10_russian.yaml',
-#        'configs/datasets/css10_spanish.yaml',
     ]
 
     mode: eval
-    batch_size: 128
+    batch_size: 32
     shuffle: False
     num_workers: 4
 

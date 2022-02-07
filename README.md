@@ -76,6 +76,8 @@ Datasets used when training are:
     * CSS10: A Collection of Single Speaker Speech Datasets for 10 Languages
     * https://github.com/Kyubyong/css10
 
+Place datasets at `data`
+
 ### Custom Datasets
 
 Write your own code!  
@@ -121,7 +123,6 @@ datasets:
   train:
     class: datasets.base.MultiDataset
     datasets: [
-      # 'configs/datasets/css10.yaml',
         'configs/datasets/vctk.yaml',
         'configs/datasets/libritts360.yaml',
     ]
@@ -134,7 +135,6 @@ datasets:
   eval:
     class: datasets.base.MultiDataset
     datasets: [
-      # 'configs/datasets/css10.yaml',
         'configs/datasets/vctk.yaml',
         'configs/datasets/libritts360.yaml',
     ]
@@ -147,8 +147,7 @@ datasets:
 
 ##### Dataset Config
 
-Dataset configs are at `./configs/datasets/`.  
-You might want to replace `/raid/vision/dhchoi/data` to `YOUR_PATH_DO_DATA`, especially at `path` section.
+Dataset configs are at `./configs/datasets/`.
 
 ```yaml
 class: datasets.vctk.VCTKDataset # implemented Dataset class name
@@ -156,16 +155,15 @@ load:
   audio: 'configs/audio/22k.yaml'
 
 path:
-  root: /raid/vision/dhchoi/data/
-  wav22: /raid/vision/dhchoi/data/VCTK-Corpus/wav22
-  wav16: /raid/vision/dhchoi/data/VCTK-Corpus/wav16
-  txt: /raid/vision/dhchoi/data/VCTK-Corpus/txt
-  timestamp: ./vctk-silence-labels/vctk-silences.0.92.txt
+  root: data/
+  wav22: data/VCTK-Corpus/wav22
+  wav16: data/VCTK-Corpus/wav16
+  txt: data/VCTK-Corpus/txt
 
   configs:
-    train: /raid/vision/dhchoi/data/VCTK-Corpus/vctk_22k_train.txt
-    eval: /raid/vision/dhchoi/data/VCTK-Corpus/vctk_22k_val.txt
-    test: /raid/vision/dhchoi/data/VCTK-Corpus/vctk_22k_test.txt
+    train: data/VCTK-Corpus/vctk_22k_train.txt
+    eval: data/VCTK-Corpus/vctk_22k_val.txt
+    test: data/VCTK-Corpus/vctk_22k_test.txt
 ```
 
 #### Model Settings
@@ -228,7 +226,7 @@ pl:
     benchmark: True
 
 logging:
-  log_dir: /raid/vision/dhchoi/log/nansy/ # PATH TO SAVE TENSORBOARD LOG FILES
+  log_dir: logs # PATH TO SAVE TENSORBOARD LOG FILES
   seed: "31" # Experiment Seed
   freq: 100 # Logging frequency (step)
   device: cuda # Training Device (used only in train_torch.py) 
@@ -313,16 +311,16 @@ BSD 3-Clause License.
 
 * Choi, Hyeong-Seok, et al. "Neural Analysis and Synthesis: Reconstructing Speech from Self-Supervised Representations."
 * Baevski, Alexei, et al. "wav2vec 2.0: A framework for self-supervised learning of speech representations."
-* Desplanques, Brecht, Jenthe Thienpondt, and Kris Demuynck. "Ecapa-tdnn: Emphasized channel attention, propagation and aggregation in tdnn based speaker verification."
+* Desplanques, Brecht, Jenthe Thienpondt, and Kris Demuynck. "Ecapa-tdnn: Emphasized channel attention, propagation and
+  aggregation in tdnn based speaker verification."
 * Chen, Mingjian, et al. "Adaspeech: Adaptive text to speech for custom voice."
-  
+
 * [Cookbook formulae for audio equalizer biquad filter coefficients](https://webaudio.github.io/Audio-EQ-Cookbook/audio-eq-cookbook.html)
 
 This implementation uses codes/data from following repositories:
 
 * [hifi-gan](https://github.com/jik876/hifi-gan)
-* [vctk-silence-labels](https://github.com/nii-yamagishilab/vctk-silence-labels.git)
-& [Mellotron](https://github.com/NVIDIA/mellotron/blob/master/yin.py)
+  & [Mellotron](https://github.com/NVIDIA/mellotron/blob/master/yin.py)
 
 Provided Checkpoints are trained from:
 

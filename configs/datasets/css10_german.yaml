@@ -3,5 +3,5 @@ load:
   audio: 'configs/audio/22k.yaml'
 
 path:
-  metadata: /raid/vision/dhchoi/data/CSS10/CSS_German/transcript.txt
-  root: /raid/vision/dhchoi/data/CSS10/CSS_German
+  metadata: data/CSS10/CSS_German/transcript.txt
+  root: data/CSS10/CSS_German
