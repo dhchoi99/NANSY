@@ -32,7 +32,7 @@ class CustomDataset(BaseDataset):
         self.mel_window = 128  # window size in mel
         self.audio_window_22k = self.mel_window * self.conf.audio.hop_size  # 32768, window size in raw audio
         self.segment_duration = self.audio_window_22k / 22050  # 1.486 (sec)
-        self.audio_window_16k = int(self.segment_duration * 16000)  # 23777
+        self.audio_window_16k = int(self.segment_duration * 16000)  # 23778
 
         self.yin_window_22k = self.audio_window_22k + self.w_len  # 34816
         self.yin_segment_duration = self.yin_window_22k / 22050.  # 1.579
@@ -114,7 +114,7 @@ class CustomDataset(BaseDataset):
             mel = mel[0]  # 1 x C x T -> C x T
         return mel
 
-    def load_mel(self, path_audio: str, sr: int = None) -> torch.Tensor:
+    def load_mel(self, path_audio: str, sr: int = None, wav_torch=None) -> torch.Tensor:
         r"""hifi-gan style mel loading
 
         params:
@@ -125,10 +125,13 @@ class CustomDataset(BaseDataset):
             mel: torch.Tensor of shape (C x T)
         """
         mel_path = path_audio + '.mel'
-        try:
-            mel = torch.load(mel_path, map_location='cpu')
-        except Exception as e:
-            _, wav_torch = self.load_wav(path_audio, sr=sr)
+        if False:
+            pass
+        # if os.path.exists(mel_path):
+        #     mel = torch.load(mel_path, map_location='cpu')
+        else:
+            if wav_torch is None:
+                _, wav_torch = self.load_wav(path_audio, sr=sr)
             mel = self.load_mel_from_audio(wav_torch, self.conf.audio)
             # torch.save(mel, mel_path)
         return mel
@@ -204,12 +207,13 @@ class CustomDataset(BaseDataset):
         if 16k audio file exists, load audio
         else, resample from 22k audio
         """
-        if wav_16k_path is not None and os.path.isfile(wav_16k_path):
-            wav_16k_numpy, wav_16k_torch = self.load_wav(wav_16k_path, 16000)
-        elif wav_22k_torch is not None:
+
+        if wav_22k_torch is not None:
             # wav_16k_torch = AF.resample(wav_22k_torch, 22050, 16000)
             wav_16k_torch = torchaudio.transforms.Resample(22050, 16000).forward(wav_22k_torch)
             wav_16k_numpy = wav_16k_torch.numpy()
+        elif wav_16k_path is not None and os.path.isfile(wav_16k_path):
+            wav_16k_numpy, wav_16k_torch = self.load_wav(wav_16k_path, 16000)
         else:
             raise NotImplementedError
         return wav_16k_numpy, wav_16k_torch
@@ -264,7 +268,7 @@ class CustomDataset(BaseDataset):
         _, pitch_median = get_pitch_median(wav_22k_numpy, sr=22050)
         return_data['pitch_median_pos'] = pitch_median
         _, wav_16k_torch = self.get_wav_16k(data['wav_path_16k'], data['wav_path_22k'], wav_22k_torch)
-        mel_22k = self.load_mel(data['wav_path_22k'], sr=22050)
+        mel_22k = self.load_mel(data['wav_path_22k'], sr=22050, wav_torch=wav_22k_torch)
 
         # assert mel_22k.shape[-1] >= self.minimum_mel_length, f'{mel_22k.shape[-1]}, {self.minimum_mel_length}'
         mel_start = random.randint(0, mel_22k.shape[-1] - self.minimum_mel_length)
@@ -299,7 +303,7 @@ class CustomDataset(BaseDataset):
         _, pitch_median = get_pitch_median(wav_22k_numpy, sr=22050)
         return_data['pitch_median_neg'] = pitch_median
         _, wav_16k_torch = self.get_wav_16k(data['wav_path_16k'], data['wav_path_22k'], wav_22k_torch)
-        mel_22k = self.load_mel(data['wav_path_22k'], sr=22050)
+        mel_22k = self.load_mel(data['wav_path_22k'], sr=22050, wav_torch=wav_22k_torch)
 
         # assert mel_22k.shape[-1] >= self.minimum_mel_length
         mel_start = random.randint(0, mel_22k.shape[-1] - self.minimum_mel_length)
