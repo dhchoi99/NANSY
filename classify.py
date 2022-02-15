@@ -3,8 +3,8 @@ import argparse
 import numpy as np
 from omegaconf import OmegaConf, DictConfig
 import torch
-import torchaudio.functional as AF
-from tqdm.notebook import tqdm, trange
+import torchaudio
+from tqdm import tqdm, trange
 
 from datasets.custom import CustomDataset
 from models.analysis import Analysis
@@ -39,8 +39,8 @@ def main():
     self = CustomDataset(conf)
 
     wav_22k_numpy, wav_22k_torch = self.load_wav(args.path_audio_gt, 22050)
-    wav_16k_torch = AF.resample(wav_22k_torch, 22050, 16000)
-    mel_22k_torch = self.load_mel(args.path_audio_gt, sr=22050)
+    wav_16k_torch = torchaudio.transforms.Resample(22050, 16000).forward(wav_22k_torch)
+    mel_22k_torch = self.load_mel(args.path_audio_gt, sr=22050, wav_torch=wav_22k_torch)
 
     data_ckpt = torch.load(args.path_ckpt, map_location='cpu')
     state_dict = data_ckpt['state_dict']
@@ -66,10 +66,8 @@ def main():
         mel_start = idx
         pos_time_idxs = self.get_time_idxs(mel_start)
 
-        mel_22k = self.crop_audio(mel_22k_torch, pos_time_idxs[0], pos_time_idxs[1],
-                                  padding_value=self.mel_padding_value)
+        mel_22k = self.crop_audio(mel_22k_torch, pos_time_idxs[0], pos_time_idxs[1])
         return_data['gt_mel_22k'] = mel_22k
-        return_data['gt_log_mel_22k'] = mel_22k
 
         wav_16k = self.crop_audio(wav_16k_torch, pos_time_idxs[3], pos_time_idxs[5])
         # return_data['gt_audio_16k_f'] = f(wav_16k, sr=16000)
