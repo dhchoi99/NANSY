@@ -7,7 +7,8 @@
         Unofficial demo page for
         <a href="https://arxiv.org/pdf/2110.14513.pdf">Neural Analysis and Synthesis: Reconstructing Speech from Self-Supervised Representations</a><br>
         Source code: <a href="https://github.com/dhchoi99/NANSY">Link</a><br>
-        Model architecture images are from the <a href="https://harsh-grenadilla-e40.notion.site/Demo-page-for-NANSY-37d4fd8ffb514765a2b234b04c8fc0f6">Original Demo Page</a>
+        Model architecture images are from the <a
+            href="https://harsh-grenadilla-e40.notion.site/Demo-page-for-NANSY-37d4fd8ffb514765a2b234b04c8fc0f6">Original Demo Page</a>
     </span>
 </div>
 <div>
@@ -15,88 +16,98 @@
     <ul>
         <div>
             <details>
-                <summary>Information perturbation</summary><br>
+                <summary>Information perturbation</summary>
+                <br>
                 <img src="./src/image/information_flow_final.jpg"><br>
                 <ul>
                     <details>
                         <summary>Original waveform</summary>
                         <img src="./src/image/original.png"><br>
-                        <audio controls src="./src/audio/original.wav">Original</audio><br>
+                        <audio controls src="./src/audio/original.wav">Original</audio>
+                        <br>
                     </details>
                     <details>
                         <summary>After f perturbation</summary>
                         <img src="./src/image/after_f.png"><br>
-                        <audio controls src="./src/audio/after_f.wav"></audio><br>
+                        <audio controls src="./src/audio/after_f.wav"></audio>
+                        <br>
                     </details>
                     <details>
-                        <summary>After g perturbation</summary><br>
+                        <summary>After g perturbation</summary>
+                        <br>
                         <img src="./src/image/after_g.png"><br>
-                        <audio controls src="./src/audio/after_g.wav"></audio><br>
+                        <audio controls src="./src/audio/after_g.wav"></audio>
+                        <br>
                     </details>
                     <details>
-                        <summary>Formant shift</summary><br>
+                        <summary>Formant shift</summary>
+                        <br>
                         Formant shift from 1/range(1.8~1) + range(1~1.8)<br>
                         <img src="./src/image/formant.gif"><br>
                     </details>
                     <details>
-                        <summary>Pitch shift</summary><br>
+                        <summary>Pitch shift</summary>
+                        <br>
                         Pitch shft from 0 ~ 12 (bins_per_octave=12)<br>
                         <img src="./src/image/pitch.gif"><br>
                     </details>
                     <details>
-                        <summary>Parametric Equalizer(PEQ)</summary><br>
+                        <summary>Parametric Equalizer(PEQ)</summary>
+                        <br>
                         <img src="./src/image/peq.png"><br>
-                        <audio controls src="./src/audio/peq.wav"></audio><br>
+                        <audio controls src="./src/audio/peq.wav"></audio>
+                        <br>
                     </details>
                 </ul>
             </details>
         </div>
         <div>
             <details>
-                <summary>Interpretable generation</summary><br>
-                <img src=""><br>
+                <summary>Interpretable generation</summary>
+                <br>
                 <ul>
                     <details>
                         <summary>Reconstructed Source Speech</summary>
+                        <span>Text: some people have accepted it as a miracle without physical explanation</span><br>
                         <div style="display: flex;">
                             <div>
                                 Original Source<br>
-                                <audio controls src=""></audio>
+                                <audio controls src="./src/audio/p225_013_gt.wav"></audio>
                             </div>
-                            <div style="padding: 0 20 0 20;"></div>
+                            <div style="padding: 0px 20px 0px 20px;"></div>
                             <div>
                                 Reconstructed Source<br>
-                                <audio controls src=""></audio>
+                                <audio controls src="./src/audio/p225_013_gen.wav"></audio>
                             </div>
-                        </div><br>
+                        </div>
+                        <br>
                     </details>
                     <details>
                         <summary>Reconstructed Target Speech</summary>
+                        <span>Text: i cant wait to meet him</span>
                         <div style="display: flex;">
                             <div>
                                 Original Target<br>
-                                <audio controls src=""></audio>
+                                <audio controls src="./src/audio/p233_236_gt.wav"></audio>
                             </div>
-                            <div style="padding: 0 20 0 20;"></div>
+                            <div style="padding: 0px 20px 0px 20px;"></div>
                             <div>
                                 Reconstructed Target<br>
-                                <audio controls src=""></audio>
+                                <audio controls src="./src/audio/p233_236_gen.wav"></audio>
                             </div>
-                        </div><br>
+                        </div>
+                        <br>
                     </details>
                     <details>
                         <summary>Converted Speech</summary>
                         <div style="display: flex;">
                             <div>
                                 Converted 1<br>
-                                <audio controls src=""></audio>
+                                <audio controls src="./src/audio/vc_225_233.wav"></audio>
                             </div>
-                            <div style="padding: 0 20 0 20;"></div>
-                            <div>
-                                Converted 2<br>
-                                <audio controls src=""></audio>
-                            </div>
-                        </div><br>
+                            <div style="padding: 0px 20px 0px 20px;"></div>
+                        </div>
+                        <br>
                     </details>
                 </ul>
             </details>
@@ -104,6 +115,7 @@
         <div>
             <details>
                 <summary>Voice conversion</summary>
+                <span>NANSY can perform zero-shot voice conversion by simply passing the desired target speech utterance to the speaker embedding network.</span>
                 <img src="./src/image/voice_conversion.png"><br>
                 <ul>
                     <div>
@@ -113,6 +125,22 @@
                             <ul>
                                 <details>
                                     <summary>Seen(Many) to Seen(Many)</summary>
+                                    <div style="display: flex;">
+                                        <div>
+                                            Source<br>
+                                            <audio controls src="./src/audio/"></audio>
+                                        </div>
+                                        <div style="padding: 0px 20px 0px 20px;"></div>
+                                        <div>
+                                            Converted<br>
+                                            <audio controls src="./src/audio/"></audio>
+                                        </div>
+                                        <div style="padding: 0px 20px 0px 20px;"></div>
+                                        <div>
+                                            Target<br>
+                                            <audio controls src="./src/audio/"></audio>
+                                        </div>
+                                    </div>
                                 </details>
                                 <details>
                                     <summary>Unseen(Any) to Seen(Many)</summary>
@@ -126,21 +154,59 @@
                             <summary>Multilingual voice conversion</summary>
                             <ul>
                                 <details>
-                                    <summary>Seen Language(Many) to Seen Language(Many)</summary>
-                                    The model is trained using only CSS10 dataset.<br>
-                                </details>
-                                <details>
-                                    <summary>Unseen Language to Seen Language</summary>
-                                    The model is trained using English-only datasets (VCTK + LibriTTS-train-clean-360)<br>
-                                </details>
-                                <details>
                                     <summary>Unseen Language to Unseen Language</summary>
-                                    The model is trained using English-only datasets (VCTK + LibriTTS-train-clean-360)<br>
+                                    The model is trained using English-only datasets (VCTK +
+                                    LibriTTS-train-clean-360)<br>
+                                    <div style="display: flex;">
+                                        <div>
+                                            Source: Japanese<br>
+                                            <audio controls src="./src/audio/meian_0000.wav"></audio>
+                                        </div>
+                                        <div style="padding: 0px 20px 0px 20px;"></div>
+                                        <div>
+                                            Converted<br>
+                                            <audio controls src="./src/audio/vc_jp_cn.wav"></audio>
+                                        </div>
+                                        <div style="padding: 0px 20px 0px 20px;"></div>
+                                        <div>
+                                            Target: Chinese<br>
+                                            <audio controls src="./src/audio/call_to_arms_0000.wav"></audio>
+                                        </div>
+                                    </div>
+                                    <div style="display: flex;">
+                                        <div>
+                                            Source: Russian<br>
+                                            <audio controls src="./src/audio/icemarch_0001.wav"></audio>
+                                        </div>
+                                        <div style="padding: 0px 20px 0px 20px;"></div>
+                                        <div>
+                                            Converted<br>
+                                            <audio controls src="./src/audio/vc_ru_de.wav"></audio>
+                                        </div>
+                                        <div style="padding: 0px 20px 0px 20px;"></div>
+                                        <div>
+                                            Target: German<br>
+                                            <audio controls src="./src/audio/meisterfloh_0001.wav"></audio>
+                                        </div>
+                                    </div>
+                                    <div style="display: flex;">
+                                        <div>
+                                            Source: Spanish<br>
+                                            <audio controls src="./src/audio/bailen_0004.wav"></audio>
+                                        </div>
+                                        <div style="padding: 0px 20px 0px 20px;"></div>
+                                        <div>
+                                            Converted<br>
+                                            <audio controls src="./src/audio/vc_es_fr.wav"></audio>
+                                        </div>
+                                        <div style="padding: 0px 20px 0px 20px;"></div>
+                                        <div>
+                                            Target: French<br>
+                                            <audio controls src="./src/audio/lesmis_0004.wav"></audio>
+                                        </div>
+                                    </div>
                                 </details>
                             </ul>
-                        </details>
-                        <details>
-                            <summary>Something fun!</summary>
                         </details>
                     </div>
                 </ul>
@@ -161,7 +227,7 @@
                                 Original<br>
                                 <audio controls src=""></audio>
                             </div>
-                            <div style="padding: 0 20 0 20;"></div>
+                            <div style="padding: 0px 20px 0px 20px;"></div>
                             <div>
                                 NANSY<br>
                                 <audio controls src=""></audio>
@@ -184,7 +250,7 @@
                                 Original<br>
                                 <audio controls src=""></audio>
                             </div>
-                            <div style="padding: 0 20 0 20;"></div>
+                            <div style="padding: 0px 20px 0px 20px;"></div>
                             <div>
                                 NANSY<br>
                                 <audio controls src=""></audio>
