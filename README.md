@@ -17,11 +17,11 @@ Check [Demo Page](https://dhchoi99.github.io/NANSY)
 ### Concerns
 
 ```
-Among the various controllabilities, it is rather obvious that the voice conversion technique can be misused and potentially harm other people. 
-More concretely, there are possible scenarios where it is being used by random unidentified users and contributing to spreading fake news. 
-In addition, it can raise concerns about biometric security systems based on speech. 
-To mitigate such issues, the proposed system should not be released without a consent so that it cannot be easily used by random users with malicious intentions. 
-That being said, there is still a potential for this technology to be used by unidentified users. 
+Among the various controllabilities, it is rather obvious that the voice conversion technique can be misused and potentially harm other people.
+More concretely, there are possible scenarios where it is being used by random unidentified users and contributing to spreading fake news.
+In addition, it can raise concerns about biometric security systems based on speech.
+To mitigate such issues, the proposed system should not be released without a consent so that it cannot be easily used by random users with malicious intentions.
+That being said, there is still a potential for this technology to be used by unidentified users.
 As a more solid solution, therefore, we believe a detection system that can discriminate between fake and real speech should be developed.
 ```
 
@@ -65,16 +65,18 @@ TODO
 
 Datasets used when training are:
 
-* VCTK:
-    * CSTR VCTK Corpus: English Multi-speaker Corpus for CSTR Voice Cloning Toolkit (version 0.92)
-    * https://datashare.ed.ac.uk/handle/10283/3443
-* LibriTTS:
-    * Large-scale corpus of English speech derived from the original materials of the LibriSpeech corpus
-    * https://openslr.org/60/
-    * train-clean-360 set
-* CSS10:
-    * CSS10: A Collection of Single Speaker Speech Datasets for 10 Languages
-    * https://github.com/Kyubyong/css10
+- VCTK:
+  - CSTR VCTK Corpus: English Multi-speaker Corpus for CSTR Voice Cloning Toolkit (version 0.92)
+  - https://datashare.ed.ac.uk/handle/10283/3443
+    For `data/VCTK-Corpus/vctk_22k_train.txt`, `data/VCTK-Corpus/vctk_22k_val.txt` and `data/VCTK-Corpus/vctk_22k_test.txt`, use [https://raw.githubusercontent.com/mindslab-ai/cotatron/master/datasets/metadata/vctk_22k_train.txt], [https://raw.githubusercontent.com/mindslab-ai/cotatron/master/datasets/metadata/vctk_22k_val.txt] and [https://raw.githubusercontent.com/mindslab-ai/cotatron/master/datasets/metadata/vctk_22k_test.txt].
+- LibriTTS:
+  - Large-scale corpus of English speech derived from the original materials of the LibriSpeech corpus
+  - https://openslr.org/60/
+  - train-clean-360 set
+    For `data/LibriTTS/libritts_train_clean_360_audiopath_text_sid_train.txt` and `data/LibriTTS/libritts_train_clean_360_audiopath_text_sid_val.txt`, use [https://raw.githubusercontent.com/mindslab-ai/univnet/master/datasets/metadata/libritts_train_clean_360_audiopath_text_sid_train.txt] and [https://raw.githubusercontent.com/mindslab-ai/univnet/master/datasets/metadata/libritts_train_clean_360_audiopath_text_sid_val.txt].
+- CSS10:
+  - CSS10: A Collection of Single Speaker Speech Datasets for 10 Languages
+  - https://github.com/Kyubyong/css10
 
 Place datasets at `data`
 
@@ -115,17 +117,15 @@ Edit `configs/train_nansy.yaml`.
 
 #### Dataset settings
 
-* Adjust `datasets.*.datasets` list.
-    * Paths to dataset config files should be in the list
+- Adjust `datasets.*.datasets` list.
+  - Paths to dataset config files should be in the list
 
 ```yaml
 datasets:
   train:
     class: datasets.base.MultiDataset
-    datasets: [
-        'configs/datasets/vctk.yaml',
-        'configs/datasets/libritts360.yaml',
-    ]
+    datasets:
+      ["configs/datasets/vctk.yaml", "configs/datasets/libritts360.yaml"]
 
     mode: train
     batch_size: 32 # Depends on GPU Memory, Original paper used 32
@@ -134,10 +134,8 @@ datasets:
 
   eval:
     class: datasets.base.MultiDataset
-    datasets: [
-        'configs/datasets/vctk.yaml',
-        'configs/datasets/libritts360.yaml',
-    ]
+    datasets:
+      ["configs/datasets/vctk.yaml", "configs/datasets/libritts360.yaml"]
 
     mode: eval
     batch_size: 32
@@ -152,7 +150,7 @@ Dataset configs are at `./configs/datasets/`.
 ```yaml
 class: datasets.vctk.VCTKDataset # implemented Dataset class name
 load:
-  audio: 'configs/audio/22k.yaml'
+  audio: "configs/audio/22k.yaml"
 
 path:
   root: data/
@@ -168,8 +166,8 @@ path:
 
 #### Model Settings
 
-* Comment out or Delete `Discriminator` section if no Discriminator needed.
-* Adjust optimizer `class`, `lr` and `betas` if needed.
+- Comment out or Delete `Discriminator` section if no Discriminator needed.
+- Adjust optimizer `class`, `lr` and `betas` if needed.
 
 ```yaml
 models:
@@ -180,7 +178,7 @@ models:
       class: torch.optim.Adam
       kwargs:
         lr: 1e-4
-        betas: [ 0.5, 0.9 ]
+        betas: [0.5, 0.9]
 
   Synthesis:
     class: models.synthesis.Synthesis
@@ -189,7 +187,7 @@ models:
       class: torch.optim.Adam
       kwargs:
         lr: 1e-4
-        betas: [ 0.5, 0.9 ]
+        betas: [0.5, 0.9]
 
   Discriminator:
     class: models.synthesis.Discriminator
@@ -198,7 +196,7 @@ models:
       class: torch.optim.Adam
       kwargs:
         lr: 1e-4
-        betas: [ 0.5, 0.9 ]
+        betas: [0.5, 0.9]
 ```
 
 #### Logging & Pytorch-lightning settings
@@ -229,17 +227,18 @@ logging:
   log_dir: logs # PATH TO SAVE TENSORBOARD LOG FILES
   seed: "31" # Experiment Seed
   freq: 100 # Logging frequency (step)
-  device: cuda # Training Device (used only in train_torch.py) 
+  device: cuda # Training Device (used only in train_torch.py)
   nepochs: 1000 # Max epochs to run
 
-  save_files: [ # Files To save for each experiment
-      './*.py',
-      './*.sh',
-      'configs/*.*',
-      'datasets/*.*',
-      'models/*.*',
-      'utils/*.*',
-  ]
+  save_files: # Files To save for each experiment
+    [
+      "./*.py",
+      "./*.sh",
+      "configs/*.*",
+      "datasets/*.*",
+      "models/*.*",
+      "utils/*.*",
+    ]
 ```
 
 ### Tensorboard
@@ -301,32 +300,32 @@ NEEDS WORK
 
 BSD 3-Clause License.
 
-* `model/hifi_gan.py`, `utils/mel.py`, pretrained checkpoints are copied/modified
+- `model/hifi_gan.py`, `utils/mel.py`, pretrained checkpoints are copied/modified
   from https://github.com/jik876/hifi-gan (MIT License)
-* [Wav2Vec2](https://github.com/pytorch/fairseq/tree/main/examples/wav2vec#wav2vec-20) (MIT License) pretrained
+- [Wav2Vec2](https://github.com/pytorch/fairseq/tree/main/examples/wav2vec#wav2vec-20) (MIT License) pretrained
   checkpoint ported to
   [HuggingFace](https://huggingface.co/facebook/wav2vec2-large-xlsr-53) (Apache License 2.0)
 
 ## References
 
-* Choi, Hyeong-Seok, et al. "Neural Analysis and Synthesis: Reconstructing Speech from Self-Supervised Representations."
-* Baevski, Alexei, et al. "wav2vec 2.0: A framework for self-supervised learning of speech representations."
-* Desplanques, Brecht, Jenthe Thienpondt, and Kris Demuynck. "Ecapa-tdnn: Emphasized channel attention, propagation and
+- Choi, Hyeong-Seok, et al. "Neural Analysis and Synthesis: Reconstructing Speech from Self-Supervised Representations."
+- Baevski, Alexei, et al. "wav2vec 2.0: A framework for self-supervised learning of speech representations."
+- Desplanques, Brecht, Jenthe Thienpondt, and Kris Demuynck. "Ecapa-tdnn: Emphasized channel attention, propagation and
   aggregation in tdnn based speaker verification."
-* Chen, Mingjian, et al. "Adaspeech: Adaptive text to speech for custom voice."
+- Chen, Mingjian, et al. "Adaspeech: Adaptive text to speech for custom voice."
 
-* [Cookbook formulae for audio equalizer biquad filter coefficients](https://webaudio.github.io/Audio-EQ-Cookbook/audio-eq-cookbook.html)
+- [Cookbook formulae for audio equalizer biquad filter coefficients](https://webaudio.github.io/Audio-EQ-Cookbook/audio-eq-cookbook.html)
 
 This implementation uses codes/data from following repositories:
 
-* [hifi-gan](https://github.com/jik876/hifi-gan)
+- [hifi-gan](https://github.com/jik876/hifi-gan)
   & [Mellotron](https://github.com/NVIDIA/mellotron/blob/master/yin.py)
 
 Provided Checkpoints are trained from:
 
-* [VCTK Corpus (version 0.92)](https://datashare.ed.ac.uk/handle/10283/3443)
-* [LibiTTS train-clean-360](https://openslr.org/60/)
-* [CSS10](https://github.com/Kyubyong/css10)
+- [VCTK Corpus (version 0.92)](https://datashare.ed.ac.uk/handle/10283/3443)
+- [LibiTTS train-clean-360](https://openslr.org/60/)
+- [CSS10](https://github.com/Kyubyong/css10)
 
 ## Special Thanks
 
