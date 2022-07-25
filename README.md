@@ -68,12 +68,12 @@ Datasets used when training are:
 - VCTK:
   - CSTR VCTK Corpus: English Multi-speaker Corpus for CSTR Voice Cloning Toolkit (version 0.92)
   - https://datashare.ed.ac.uk/handle/10283/3443
-    For `data/VCTK-Corpus/vctk_22k_train.txt`, `data/VCTK-Corpus/vctk_22k_val.txt` and `data/VCTK-Corpus/vctk_22k_test.txt`, use [https://raw.githubusercontent.com/mindslab-ai/cotatron/master/datasets/metadata/vctk_22k_train.txt], [https://raw.githubusercontent.com/mindslab-ai/cotatron/master/datasets/metadata/vctk_22k_val.txt] and [https://raw.githubusercontent.com/mindslab-ai/cotatron/master/datasets/metadata/vctk_22k_test.txt].
+    For `data/VCTK-Corpus/vctk_22k_train.txt`, `vctk_22k_val.txt` and `vctk_22k_test.txt`, use files at [mindslab-ai/cotatron](https://github.com/mindslab-ai/cotatron/tree/master/datasets/metadata).
 - LibriTTS:
   - Large-scale corpus of English speech derived from the original materials of the LibriSpeech corpus
   - https://openslr.org/60/
   - train-clean-360 set
-    For `data/LibriTTS/libritts_train_clean_360_audiopath_text_sid_train.txt` and `data/LibriTTS/libritts_train_clean_360_audiopath_text_sid_val.txt`, use [https://raw.githubusercontent.com/mindslab-ai/univnet/master/datasets/metadata/libritts_train_clean_360_audiopath_text_sid_train.txt] and [https://raw.githubusercontent.com/mindslab-ai/univnet/master/datasets/metadata/libritts_train_clean_360_audiopath_text_sid_val.txt].
+    For `data/LibriTTS/libritts_train_clean_360_audiopath_text_sid_train.txt` and `libritts_train_clean_360_audiopath_text_sid_val.txt`, use files at [mindslab-ai/univnet](https://github.com/mindslab-ai/univnet/tree/master/datasets/metadata).
 - CSS10:
   - CSS10: A Collection of Single Speaker Speech Datasets for 10 Languages
   - https://github.com/Kyubyong/css10
